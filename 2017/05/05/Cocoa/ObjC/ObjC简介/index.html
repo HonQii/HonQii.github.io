@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+
+
+<html lang="zh-Hans">
+  
+
+    <head>
+      <meta charset="utf-8" />
+       
+      <meta name="keywords" content="iOS 开发,Objective-C,Swift,Cocoa" />
+       
+      <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1"
+      />
+      <title>Objective-C简介 |  HonQi&#39;s Letter</title>
+  <meta name="generator" content="hexo-theme-ayer">
+      
+      <link rel="shortcut icon" href="/favicon.ico" />
+       
+<link rel="stylesheet" href="/dist/main.css">
+
+      <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/css/remixicon.min.css"
+      />
+      
+<link rel="stylesheet" href="/css/custom.css">
+ 
+      <script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+       
+ 
+
+      <!-- mermaid -->
+      
+    <link rel="alternate" href="/atom.xml" title="HonQi's Letter" type="application/atom+xml">
+</head>
+  </html>
+</html>
+
+
+<body>
+  <div id="app">
+    
+      
+    <main class="content on">
+      <section class="outer">
+  <article
+  id="post-Cocoa/ObjC/ObjC简介"
+  class="article article-type-post"
+  itemscope
+  itemprop="blogPost"
+  data-scroll-reveal
+>
+  <div class="article-inner">
+    
+    <header class="article-header">
+       
+<h1 class="article-title sea-center" style="border-left:0" itemprop="name">
+  Objective-C简介
+</h1>
+ 
+
+      
+    </header>
+     
+    <div class="article-meta">
+      <a href="/2017/05/05/Cocoa/ObjC/ObjC%E7%AE%80%E4%BB%8B/" class="article-date">
+  <time datetime="2017-05-05T16:00:00.000Z" itemprop="datePublished">2017-05-06</time>
+</a> 
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/cocoa/">Cocoa</a> / <a class="article-category-link" href="/categories/cocoa/objc/">ObjC</a>
+  </div>
+  
+<div class="word_count">
+    <span class="post-time">
+        <span class="post-meta-item-icon">
+            <i class="ri-quill-pen-line"></i>
+            <span class="post-meta-item-text"> Word count:</span>
+            <span class="post-count">2k</span>
+        </span>
+    </span>
+
+    <span class="post-time">
+        &nbsp; | &nbsp;
+        <span class="post-meta-item-icon">
+            <i class="ri-book-open-line"></i>
+            <span class="post-meta-item-text"> Reading time≈</span>
+            <span class="post-count">7 min</span>
+        </span>
+    </span>
+</div>
+ 
+    </div>
+      
+    <div class="tocbot"></div>
+
+
+
+
+  
+    <div class="article-entry" itemprop="articleBody">
+       
+  <p>Objective-C是C语言的严格超集－－任何C语言程序不经修改就可以直接通过Objective-C编译器，在Objective-C中使用C语言代码也是完全合法的。Objective-C的原意就是在C语言主体上加入面向对象的特性</p>
+<span id="more"></span>
+
+<p>ObjC是通过C语言模拟了Smalltalk的消息传递机制来实现面向对象的特性的；因此其他所有非面向对象的语法都与C语言中一致。</p>
+<h2 id="消息机制（Runtime）"><a href="#消息机制（Runtime）" class="headerlink" title="消息机制（Runtime）"></a><a href="https://developer.apple.com/documentation/objectivec/objective_c_runtime#//apple_ref/doc/uid/TP40001418">消息机制（Runtime）</a></h2><p>ObjC的最大特点就是承自SmallTalk的消息传递机制。与其他主流面向对象语言风格不同，在ObjC中调用对象的方法实质上是<strong>向对象绑定的函数传递消息</strong>。<br>主流面向对象语言中类别与方法的关系清晰严格，一个方法必定属于一个类，在编译时就已经绑定，不可能调用一个类别中不存在的方法。在ObjC中，类别与函数的关系比较松散，它们之间仅仅通过一个类别中存储的函数表来构建联系，当调用某个方法时，类别的实例对象将消息发送到方法；所有的方法都被视为对消息的回应，而消息的处理则会在执行时才会动态的决定（Runtime）。</p>
+<p>Runtime是一个C语言和汇编混合实现的库，它是ObjC语言的核心和动力。Runtime通过C语言的结构体定义了ObjC中类、对象、方法、函数、协议等数据结构，同时实现了它们之间的消息传递机制</p>
+<h2 id="消息传递"><a href="#消息传递" class="headerlink" title="消息传递"></a>消息传递</h2><p>通过Runtime发送一个消息后，会找到接收该消息的对象实例并将消息传递给它。<br>一个对象在接收到消息之后，有三种可能的处理方式：一、回应该消息并执行方法；二、若无法回应，则可以将消息转发给其他对象；三、若前两个途径均不能处理该消息，则使用处理意外的方法处理该消息–默认是抛出错误；因此如果对象中接收到了一个无法处理的消息，也<strong>只会在执行期抛出异常</strong>，不会出现错误或崩溃；这一特性使得ObjC天生具有鸭子类型的动态绑定能力，也使得ObjC成为一门动态语言。</p>
+<h3 id="消息发送"><a href="#消息发送" class="headerlink" title="消息发送"></a>消息发送</h3><p>ObjC中所有消息都是通过Runtime中的<code>objc_msgSend(receiver, selector, arg1, arg2, ...)</code>方法发送的；该方法的第一个参数<code>receiver</code>是接收消息的对象，第二个参数<code>selector</code>是调用的函数签名，剩下的则是传递的函数参数</p>
+<blockquote>
+<p>这个消息函数只有编译器能调用，不能手动调用</p>
+</blockquote>
+<p>当调用一个ObjC方法时，并没有显示的指定<code>receiver</code> 和 <code>selector</code>，这两个参数是Runtime自动添加的，<code>receiver</code>是该方法所属的对象，而<code>selector</code>则是ObjC方法对应的C函数的签名</p>
+<blockquote>
+<p>每一个ObjC方法实质上都是一个至少带有<code>receiver</code>（接受对象）和<code>_cmd</code>（执行的selector）的C语言函数，ObjC方法和C函数的对应关系存储在类的一个函数表中</p>
+</blockquote>
+<p>在被调用的方法实现中，可以获取这两个参数信息</p>
+<ul>
+<li><code>getTheReceiver()</code> 方法可以获取接收对象，一般是 <code>self</code></li>
+<li><code>getTheMethod()</code> 方法可以获取 <code>selector</code></li>
+</ul>
+<h3 id="消息接收"><a href="#消息接收" class="headerlink" title="消息接收"></a>消息接收</h3><p>消息通过<code>objc_msgSend</code>函数发出之后，首先经历的是查找的过程。</p>
+<ol>
+<li>根据 <code>receiver</code> 对象的<code>isa</code>指针找到该对象实现的<em>类对象</em><blockquote>
+<p>对象结构体中只有一个指向类结构体的isa指针</p>
+</blockquote>
+</li>
+<li>查询类对象中方法函数列表 <code>methodlists</code>，通过函数签名结构体<code>SEL</code>查找对应的实现结构体<code>Method</code>；如果在当前类中找不到会沿着继承链向上查找<blockquote>
+<p>在消息的接收过程中，类结构体中的几个元素至关重要</p>
+<ul>
+<li>isa 指针：用于确定消息接收者实例对象</li>
+<li>super_class 指针：用于找不到对应的函数签名时继续沿父类查找，直到根对象</li>
+<li>methodList 类调度表(dispatch table)：保存了自身持有的所有方法的散列表（方法名和地址），可以通过 Selector 中的方法名找到对应的方法地址</li>
+<li>cache 方法列表：为了提高效率，Runtime 会缓存调用过的 Selector 和方法地址，在调度表methodList中查找之前会先去cache中找</li>
+</ul>
+</blockquote>
+</li>
+<li>得到函数结构体<code>Method</code>后，可以确定函数实现指针<code>IMP</code>和对应的参数，调用该函数</li>
+</ol>
+<h4 id="提高调用效率"><a href="#提高调用效率" class="headerlink" title="提高调用效率"></a>提高调用效率</h4><p>动态特性使得每次调用方法都会经历一系列的查找，虽有会有缓存，但是还是要经历消息的发送接收查找过程，只是减少了查找的次数。因此如果需要连续的调用一个方法多次，<strong>可以通过获取方法地址直接调用的方式来提高速度</strong></p>
+<p><code>methodForSelector:</code> 方法可以获取对应 Selector 的地址（指针）；返回的指针是 <code>Void *</code>，需要转换为对应的函数类型后才能使用。eg.</p>
+<figure class="highlight objc"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 声明函数类型：void (* methodType)(id, SEL, argType, ...) </span></span><br><span class="line"><span class="comment"> * void 是返回值类型，此处为空</span></span><br><span class="line"><span class="comment"> * id 和 SEL 是隐藏参数，此处需要显示传递</span></span><br><span class="line"><span class="comment"> * argType 是函数的实际参数类型</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">void</span> (* test)(<span class="keyword">id</span>, SEL, <span class="keyword">int</span>);</span><br><span class="line"><span class="comment">// 将 void * 类型强转为对应函数类型</span></span><br><span class="line">test = (<span class="keyword">void</span> (*)(<span class="keyword">id</span>, SEL, <span class="keyword">int</span>))[<span class="keyword">self</span> methodForSelector:<span class="keyword">@selector</span>(print:)];</span><br><span class="line"><span class="comment">// 直接调用函数</span></span><br><span class="line">test(<span class="keyword">self</span>, <span class="keyword">@selector</span>(print:), <span class="number">999</span>);</span><br></pre></td></tr></table></figure>
+
+<h4 id="消息查找的具体实现"><a href="#消息查找的具体实现" class="headerlink" title="消息查找的具体实现"></a>消息查找的具体实现</h4><p>消息查找是通过调用类中的<code>+ (BOOL)resolveClassMethod:(SEL)sel</code>和<code>+ (BOOL)resolveInstanceMethod:(SEL)sel</code>方法来分别查找类方法和对象方法</p>
+<blockquote>
+<p>可以在这两个方法中动态的添加一些原本没有的方法实现</p>
+</blockquote>
+<figure class="highlight objc"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">+ (<span class="built_in">BOOL</span>)resolveInstanceMethod:(SEL)sel &#123;</span><br><span class="line">    <span class="keyword">if</span> (sel == <span class="keyword">@selector</span>(dynamicMethodIMP)) &#123;</span><br><span class="line">        class_addMethod([<span class="keyword">self</span> <span class="keyword">class</span>], sel, (IMP)dynamicMethodIMP, <span class="string">&quot;v@:&quot;</span>);</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> [<span class="keyword">super</span> resolveInstanceMethod:sel];</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">void</span> dynamicMethodIMP(<span class="keyword">id</span> receiver, SEL _cmd, ...) &#123;</span><br><span class="line">    <span class="comment">// dynamic do somthing ...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="消息转发"><a href="#消息转发" class="headerlink" title="消息转发"></a>消息转发</h3><p>在消息查找过程中，如果沿继承链最终依然没有找到对应的函数实现，消息就会进入转发流程，消息的转发分为两种情况：</p>
+<ol>
+<li>当前消息所属对象能够获取待转发的对象，此时直接返回该对象完成转发，如果无法获取则进入下一步骤</li>
+<li>当前消息所属对象不能获取待转发的对象，此时需要将消息封装为函数签名，然后通过函数签名完成转发</li>
+</ol>
+<h4 id="可获取目标对象的转发"><a href="#可获取目标对象的转发" class="headerlink" title="可获取目标对象的转发"></a>可获取目标对象的转发</h4><p>消息转发首先检查是否有明确目标对象的转发，如果有则直接将消息发送到新的对象<br>该过程通过 <code>- (id)forwardingTargetForSelector:(SEL)aSelector</code> 方法完成，该返回的实例对象就是新的消息对象，返回 <code>nil</code> 则继续进入下一步的转发</p>
+<h4 id="无目标对象的转发（更加灵活）"><a href="#无目标对象的转发（更加灵活）" class="headerlink" title="无目标对象的转发（更加灵活）"></a>无目标对象的转发（更加灵活）</h4><p>如果当前消息所属对象无法获取消息转发的目标对象，则继续检查是否有对应的函数签名；如果有则通过函数签名调用将消息转发出去</p>
+<ol>
+<li>尝试通过 <code>- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector</code> 方法获取对应的函数签名</li>
+<li>如果获取到对应的函数签名，则通过调用 <code>- (void)forwardInvocation:(NSInvocation *)anInvocation</code> 方法转发消息</li>
+</ol>
+<blockquote>
+<p>可以通过类方法<code>+ (NSMethodSignature *)instanceMethodSignatureForSelector:(SEL)aSelector</code>获取类中对应的方法签名 （???消息转发过程中如果能直接获取到转发对象，是否也是通过此方法获取函数签名后完成的转发）</p>
+</blockquote>
+<h3 id="消息异常"><a href="#消息异常" class="headerlink" title="消息异常"></a>消息异常</h3><p>如果在消息无法处理并且转发失败之后，会抛出异常</p>
+<blockquote>
+<p>具体的实现机制是<code>NSObject</code>类中，<code>- (void)forwardInvocation:(NSInvocation *)anInvocation</code>方法默认实现是调用 <code>doesNotRecognizeSelector:</code> 方法抛出异常</p>
+</blockquote>
+ 
+      <!-- reward -->
+      
+    </div>
+    
+
+    <!-- copyright -->
+    
+    <div class="declare">
+      <ul class="post-copyright">
+        <li>
+          <i class="ri-copyright-line"></i>
+          <strong>Copyright： </strong>
+          
+          Copyright is owned by the author. For commercial reprints, please contact the author for authorization. For non-commercial reprints, please indicate the source.
+          
+        </li>
+      </ul>
+    </div>
+    
+    <footer class="article-footer">
+       
+<div class="share-btn">
+      <span class="share-sns share-outer">
+        <i class="ri-share-forward-line"></i>
+        分享
+      </span>
+      <div class="share-wrap">
+        <i class="arrow"></i>
+        <div class="share-icons">
+          
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="ri-weibo-fill"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="ri-wechat-fill"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="ri-qq-fill"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="ri-douban-line"></i>
+          </a>
+          <!-- <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a> -->
+          
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="ri-facebook-circle-fill"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="ri-twitter-fill"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="ri-google-fill"></i>
+          </a>
+        </div>
+      </div>
+</div>
+
+<div class="wx-share-modal">
+    <a class="modal-close" href="javascript:;"><i class="ri-close-circle-line"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://notes.honqi.ink/2017/05/05/Cocoa/ObjC/ObjC%E7%AE%80%E4%BB%8B/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div id="share-mask"></div>  
+    </footer>
+  </div>
+
+   
+  <nav class="article-nav">
+    
+      <a href="/2017/05/23/Cocoa/ObjC/ObjC%E7%BC%96%E7%A0%81/" class="article-nav-link">
+        <strong class="article-nav-caption">上一篇</strong>
+        <div class="article-nav-title">
+          
+            Objective-C 编码
+          
+        </div>
+      </a>
+    
+    
+  </nav>
+
+   
+<!-- valine评论 -->
+<div id="vcomments-box">
+  <div id="vcomments"></div>
+</div>
+<script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/valine@1.4.14/dist/Valine.min.js"></script>
+<script>
+  new Valine({
+    el: "#vcomments",
+    app_id: "",
+    app_key: "",
+    path: window.location.pathname,
+    avatar: "monsterid",
+    placeholder: "给我的文章加点评论吧~",
+    recordIP: true,
+  });
+  const infoEle = document.querySelector("#vcomments .info");
+  if (infoEle && infoEle.childNodes && infoEle.childNodes.length > 0) {
+    infoEle.childNodes.forEach(function (item) {
+      item.parentNode.removeChild(item);
+    });
+  }
+</script>
+<style>
+  #vcomments-box {
+    padding: 5px 30px;
+  }
+
+  @media screen and (max-width: 800px) {
+    #vcomments-box {
+      padding: 5px 0px;
+    }
+  }
+
+  #vcomments-box #vcomments {
+    background-color: #fff;
+  }
+
+  .v .vlist .vcard .vh {
+    padding-right: 20px;
+  }
+
+  .v .vlist .vcard {
+    padding-left: 10px;
+  }
+</style>
+
+ 
+   
+     
+</article>
+
+</section>
+      <footer class="footer">
+  <div class="outer">
+    <ul>
+      <li>
+        Copyrights &copy;
+        2017-2021
+        <i class="ri-heart-fill heart_icon"></i> HonQi
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        
+        Powered by <a href="https://hexo.io" target="_blank">Hexo</a>
+        <span class="division">|</span>
+        Theme - <a href="https://github.com/Shen-Yu/hexo-theme-ayer" target="_blank">Ayer</a>
+        
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+      </li>
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      <li>
+        <!-- cnzz统计 -->
+        
+      </li>
+    </ul>
+  </div>
+</footer>
+      <div class="float_btns">
+        <div class="totop" id="totop">
+  <i class="ri-arrow-up-line"></i>
+</div>
+
+<div class="todark" id="todark">
+  <i class="ri-moon-line"></i>
+</div>
+
+      </div>
+    </main>
+    <aside class="sidebar on">
+      <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+  <div class="logo">
+    <a href="/"><img src="/avatar.png" alt="HonQi&#39;s Letter"></a>
+  </div>
+  
+  <ul class="nav nav-main">
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/">主页</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/archives">归档</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/categories">分类</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags">标签</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/about">关于我</a>
+    </li>
+    
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      
+      <a class="nav-item-link nav-item-search"  title="Search">
+        <i class="ri-search-line"></i>
+      </a>
+      
+      
+      <a class="nav-item-link" target="_blank" href="/atom.xml" title="RSS Feed">
+        <i class="ri-rss-line"></i>
+      </a>
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+    </aside>
+    <div id="mask"></div>
+
+<!-- #reward -->
+<div id="reward">
+  <span class="close"><i class="ri-close-line"></i></span>
+  <p class="reward-p"><i class="ri-cup-line"></i>请我喝杯咖啡吧~</p>
+  <div class="reward-box">
+    
+    
+  </div>
+</div>
+    
+<script src="/js/jquery-2.0.3.min.js"></script>
+ 
+<script src="/js/lazyload.min.js"></script>
+
+<!-- Tocbot -->
+ 
+<script src="/js/tocbot.min.js"></script>
+
+<script>
+  tocbot.init({
+    tocSelector: ".tocbot",
+    contentSelector: ".article-entry",
+    headingSelector: "h1, h2, h3, h4, h5, h6",
+    hasInnerContainers: true,
+    scrollSmooth: true,
+    scrollContainer: "main",
+    positionFixedSelector: ".tocbot",
+    positionFixedClass: "is-position-fixed",
+    fixedSidebarOffset: "auto",
+  });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.js"></script>
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.css"
+/>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js"></script>
+
+<script src="/dist/main.js"></script>
+
+<!-- ImageViewer -->
+ <!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                <!--  Controls are self-explanatory. Order can be changed. -->
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" style="display:none" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.min.css">
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"></script>
+
+<script>
+    function viewer_init() {
+        let pswpElement = document.querySelectorAll('.pswp')[0];
+        let $imgArr = document.querySelectorAll(('.article-entry img:not(.reward-img)'))
+
+        $imgArr.forEach(($em, i) => {
+            $em.onclick = () => {
+                // slider展开状态
+                // todo: 这样不好，后面改成状态
+                if (document.querySelector('.left-col.show')) return
+                let items = []
+                $imgArr.forEach(($em2, i2) => {
+                    let img = $em2.getAttribute('data-idx', i2)
+                    let src = $em2.getAttribute('data-target') || $em2.getAttribute('src')
+                    let title = $em2.getAttribute('alt')
+                    // 获得原图尺寸
+                    const image = new Image()
+                    image.src = src
+                    items.push({
+                        src: src,
+                        w: image.width || $em2.width,
+                        h: image.height || $em2.height,
+                        title: title
+                    })
+                })
+                var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, {
+                    index: parseInt(i)
+                });
+                gallery.init()
+            }
+        })
+    }
+    viewer_init()
+</script> 
+<!-- MathJax -->
+
+<!-- Katex -->
+
+<!-- busuanzi  -->
+
+<!-- ClickLove -->
+
+<!-- ClickBoom1 -->
+
+<!-- ClickBoom2 -->
+
+<!-- CodeCopy -->
+ 
+<link rel="stylesheet" href="/css/clipboard.css">
+ <script src="https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js"></script>
+<script>
+  function wait(callback, seconds) {
+    var timelag = null;
+    timelag = window.setTimeout(callback, seconds);
+  }
+  !function (e, t, a) {
+    var initCopyCode = function(){
+      var copyHtml = '';
+      copyHtml += '<button class="btn-copy" data-clipboard-snippet="">';
+      copyHtml += '<i class="ri-file-copy-2-line"></i><span>COPY</span>';
+      copyHtml += '</button>';
+      $(".highlight .code pre").before(copyHtml);
+      $(".article pre code").before(copyHtml);
+      var clipboard = new ClipboardJS('.btn-copy', {
+        target: function(trigger) {
+          return trigger.nextElementSibling;
+        }
+      });
+      clipboard.on('success', function(e) {
+        let $btn = $(e.trigger);
+        $btn.addClass('copied');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-checkbox-circle-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPIED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-checkbox-circle-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+      clipboard.on('error', function(e) {
+        e.clearSelection();
+        let $btn = $(e.trigger);
+        $btn.addClass('copy-failed');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-time-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPY FAILED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-time-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+    }
+    initCopyCode();
+  }(window, document);
+</script>
+ 
+<!-- CanvasBackground -->
+
+<script>
+  if (window.mermaid) {
+    mermaid.initialize({ theme: "forest" });
+  }
+</script>
+
+
+    
+  </div>
+</body>
+
+</html>

@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+
+
+<html lang="zh-Hans">
+  
+
+    <head>
+      <meta charset="utf-8" />
+       
+      <meta name="keywords" content="iOS 开发,Objective-C,Swift,Cocoa" />
+       
+      <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1"
+      />
+      <title>iOS Layout 简介 |  HonQi&#39;s Letter</title>
+  <meta name="generator" content="hexo-theme-ayer">
+      
+      <link rel="shortcut icon" href="/favicon.ico" />
+       
+<link rel="stylesheet" href="/dist/main.css">
+
+      <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/css/remixicon.min.css"
+      />
+      
+<link rel="stylesheet" href="/css/custom.css">
+ 
+      <script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+       
+ 
+
+      <!-- mermaid -->
+      
+    <link rel="alternate" href="/atom.xml" title="HonQi's Letter" type="application/atom+xml">
+</head>
+  </html>
+</html>
+
+
+<body>
+  <div id="app">
+    
+      
+    <main class="content on">
+      <section class="outer">
+  <article
+  id="post-Cocoa/iOS/Layout"
+  class="article article-type-post"
+  itemscope
+  itemprop="blogPost"
+  data-scroll-reveal
+>
+  <div class="article-inner">
+    
+    <header class="article-header">
+       
+<h1 class="article-title sea-center" style="border-left:0" itemprop="name">
+  iOS Layout 简介
+</h1>
+ 
+
+      
+    </header>
+     
+    <div class="article-meta">
+      <a href="/2018/03/02/Cocoa/iOS/Layout/" class="article-date">
+  <time datetime="2018-03-02T16:00:00.000Z" itemprop="datePublished">2018-03-03</time>
+</a> 
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/cocoa/">Cocoa</a> / <a class="article-category-link" href="/categories/cocoa/ios/">iOS</a>
+  </div>
+  
+<div class="word_count">
+    <span class="post-time">
+        <span class="post-meta-item-icon">
+            <i class="ri-quill-pen-line"></i>
+            <span class="post-meta-item-text"> Word count:</span>
+            <span class="post-count">2.2k</span>
+        </span>
+    </span>
+
+    <span class="post-time">
+        &nbsp; | &nbsp;
+        <span class="post-meta-item-icon">
+            <i class="ri-book-open-line"></i>
+            <span class="post-meta-item-text"> Reading time≈</span>
+            <span class="post-count">8 min</span>
+        </span>
+    </span>
+</div>
+ 
+    </div>
+      
+    <div class="tocbot"></div>
+
+
+
+
+  
+    <div class="article-entry" itemprop="articleBody">
+       
+  <p>iOS中的Layout可以大概分为手动计算坐标值和使用约束自动布局两种；而自动约束布局最终也是通过引擎计算转为坐标值。</p>
+<span id="more"></span>
+
+<h2 id="手动计算坐标-Frame"><a href="#手动计算坐标-Frame" class="headerlink" title="手动计算坐标 Frame"></a>手动计算坐标 <code>Frame</code></h2><p>手动计算坐标是iOS布局中最基础的方式。这种方式最直观，UIView底层的CALayer也是使用类似的一套坐标系布局。但是缺点也很明显，对于不同尺寸的设备，通常很难通过一套代码全部适配。</p>
+<h2 id="按比例自动调整布局-Autoresizing"><a href="#按比例自动调整布局-Autoresizing" class="headerlink" title="按比例自动调整布局 Autoresizing"></a>按比例自动调整布局 <code>Autoresizing</code></h2><p>在第一代iPad面世后，设备屏幕出现了差异，同时iPad通常要兼容横屏和竖屏两种情况，这时候通过设置frame布局就需要写不同的代码。这时候推出了<code>Autoresizing</code>，使得子视图的布局可以随着父视图自动调整。</p>
+<blockquote>
+<p><code>Autoresizing</code>是一种按比例布局的方案；因此只能指定与父视图的布局关系</p>
+</blockquote>
+<p><code>autoresizesSubviews</code>属性是控制是否自动调整子视图的开关，默认为<code>True</code></p>
+<p>自动调整会根据 <code>autoresizingMask</code> 指定的属性枚举值来按比例调整布局；默认为 <code>UIViewAutoresizingNone</code>，表示不会自动调整</p>
+<figure class="highlight objc"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="built_in">NS_OPTIONS</span>(<span class="built_in">NSUInteger</span>, <span class="built_in">UIViewAutoresizing</span>) &#123;</span><br><span class="line">    <span class="built_in">UIViewAutoresizingNone</span>                 = <span class="number">0</span>,         </span><br><span class="line">    <span class="built_in">UIViewAutoresizingFlexibleLeftMargin</span>   = <span class="number">1</span> &lt;&lt; <span class="number">0</span>,</span><br><span class="line">    <span class="built_in">UIViewAutoresizingFlexibleWidth</span>        = <span class="number">1</span> &lt;&lt; <span class="number">1</span>,</span><br><span class="line">    <span class="built_in">UIViewAutoresizingFlexibleRightMargin</span>  = <span class="number">1</span> &lt;&lt; <span class="number">2</span>,</span><br><span class="line">    <span class="built_in">UIViewAutoresizingFlexibleTopMargin</span>    = <span class="number">1</span> &lt;&lt; <span class="number">3</span>,</span><br><span class="line">    <span class="built_in">UIViewAutoresizingFlexibleHeight</span>       = <span class="number">1</span> &lt;&lt; <span class="number">4</span>,</span><br><span class="line">    <span class="built_in">UIViewAutoresizingFlexibleBottomMargin</span> = <span class="number">1</span> &lt;&lt; <span class="number">5</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<ul>
+<li><code>None</code> View 的 Frame 不会随 superView 变化</li>
+<li><code>LeftMargin</code> 自动调整<em>左边距</em>大小，此时右边距不变；right 相反</li>
+<li><code>TopMargin</code> 自动调整<em>上边距</em>大小，此时下边距不变；bottom 相反</li>
+<li><code>Height / Width</code> 自动调整宽或高，保持4个边距不变</li>
+</ul>
+<blockquote>
+<p>Mask 是位枚举，因此可以混合使用，效果叠加</p>
+</blockquote>
+<h2 id="自动布局-AutoLayout"><a href="#自动布局-AutoLayout" class="headerlink" title="自动布局 AutoLayout"></a>自动布局 AutoLayout</h2><p>AutoLayout 描述的是同一个图层树上的视图之间的布局关系，因此有两个重要的决定因素：</p>
+<ul>
+<li>参照物：另一个视图，只要是同一图层树（有共同的祖先）上的就行</li>
+<li>约束：描述与参照物之间的位置关系</li>
+</ul>
+<p><strong>两个视图之间的约束关系模版为</strong> <code>item1.attribute1 = multiplier × item2.attribute2 + constant</code><br>这个模版可以使用两种方式描述：<code>VFL</code>格式和面向对象方式</p>
+<h3 id="VFL"><a href="#VFL" class="headerlink" title="VFL"></a>VFL</h3><p>VFL(Visual Format Layout)可视化格式布局是最初用来描述AutoLayout的方式，VFL通过字符串创建 NSLayoutConstraint 对象</p>
+<p><strong>VFL符号</strong></p>
+<table>
+<thead>
+<tr>
+<th align="center">符号</th>
+<th align="center">意义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">￨</td>
+<td align="center">表示父视图边缘</td>
+</tr>
+<tr>
+<td align="center">-</td>
+<td align="center">表示距离， eg. <code>-100-</code> 表示两个间隔100</td>
+</tr>
+<tr>
+<td align="center">V:</td>
+<td align="center">表示竖直方向</td>
+</tr>
+<tr>
+<td align="center">H:</td>
+<td align="center">表示水平方向</td>
+</tr>
+<tr>
+<td align="center">&gt;=</td>
+<td align="center">表示视图间距、宽度和高度必须大于或等于某个值</td>
+</tr>
+<tr>
+<td align="center">&lt;=</td>
+<td align="center">表示视图间距、宽度和高度必须小宇或等于某个值</td>
+</tr>
+<tr>
+<td align="center">==</td>
+<td align="center">表示视图间距、宽度或者高度必须等于某个值</td>
+</tr>
+<tr>
+<td align="center">@num</td>
+<td align="center">优先级</td>
+</tr>
+<tr>
+<td align="center">[view]</td>
+<td align="center">[] 中放视图</td>
+</tr>
+<tr>
+<td align="center">(num)</td>
+<td align="center">() 设置视图的宽/高，eg. <code>H:￨[view(100)]</code> 表示 view 宽为 100； <code>H:￨[view(&gt;=100@751)]</code> 表示宽大于等于100，优先级为751</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>可以使用<code>NSDictionaryOfVariableBindings</code>宏创建视图名对应视图对象的字典</p>
+</blockquote>
+<h3 id="面向对象描述"><a href="#面向对象描述" class="headerlink" title="面向对象描述"></a>面向对象描述</h3><p>iOS中将Autolayout抽象为几个不同的类来表示：</p>
+<h4 id="NSLayoutConstraint"><a href="#NSLayoutConstraint" class="headerlink" title="NSLayoutConstraint"></a><code>NSLayoutConstraint</code></h4><p>描述了两个<code>View</code>之间的布局关系；AutoLayou引擎会根据所描述的布局约束关系转换为视图的<code>Frame</code> 完成布局</p>
+<h4 id="NSLayoutRelation"><a href="#NSLayoutRelation" class="headerlink" title="NSLayoutRelation"></a><code>NSLayoutRelation</code></h4><p>枚举了两个属性之间的关系，有<code>&gt;= / &gt; / = / &lt; / &lt;=</code></p>
+<h4 id="NSLayoutAttribute"><a href="#NSLayoutAttribute" class="headerlink" title="NSLayoutAttribute"></a><code>NSLayoutAttribute</code></h4><p>枚举了可约束的布局属性</p>
+<blockquote>
+<p><code>Leading | Trailing</code> <em>前/后</em>属性，表示当前状态下的开始/结束方向；用于适应<code>rtl</code>和<code>ltr</code>布局，在<code>ltr</code>时等于左右，否则等于右左<br><code>LastBaseLine | FirstBaseLine</code> 基线，主要针对<code>UILabel</code>等视图，<strong>基线表示内容（文本）底部/底部的位置</strong>；对于大多数视图，基线等于<code>bottom | top</code><br><code>Margin</code> 指各个方向上的边距，等效于 <code>UIView</code> 中设置 <code>layoutMargins</code> 属性<br><code>CenterXWithinMargins</code> 指 X 轴方向上两侧的边距，同理 <code>CenterYWithinMargins</code> 指 Y 轴方向上两侧的边距<br><code>NotAnAttribute</code> 只有一个<code>Attribute</code>时用这个属性来占位，例如将高度指定为数值</p>
+</blockquote>
+<h4 id="NSLayoutFormatOptions"><a href="#NSLayoutFormatOptions" class="headerlink" title="NSLayoutFormatOptions"></a><code>NSLayoutFormatOptions</code></h4><p>位枚举了视图布局时的<strong>方向、对齐方式、间距（iOS 11+）</strong></p>
+<blockquote>
+<p>对齐方式是位枚举，可以组合使用，使用<code>AlignmentMask = 0xFFFF</code> 做掩码计算坐标属性<br>方向有<code>LeadingToTrailing | LeftToRight | RightToLeft</code>只能选择其中一个，默认为 <code>DirectionLeadingToTrailing</code>，使用<code>DirectionMask = 0x3 &lt;&lt; 16</code>做掩码<br>间距有 <code>EdgeToEdge | BaselineToBaseline</code> 只能选一个，默认为<code>BaselineToBaseline</code>，使用 <code>SpacingMask = 0x1 &lt;&lt; 19</code> 做掩码</p>
+</blockquote>
+<h4 id="UILayoutPriority"><a href="#UILayoutPriority" class="headerlink" title="UILayoutPriority"></a><code>UILayoutPriority</code></h4><p>布局优先级，用数值表示，最大值为 1000；系统预定义了一些优先级常量</p>
+<ul>
+<li><code>UILayoutPriorityRequired</code> 1000；最高优先级</li>
+<li><code>UILayoutPriorityDefaultHigh</code> 500；保证内容不会被**压缩 (compressing)**的优先级</li>
+<li><code>UILayoutPriorityDefaultLow</code> 250；保证内容不会被<strong>拉伸（hugs）</strong>的优先级</li>
+<li><code>UILayoutPriorityFittingSizeLevel</code> 50；这个优先级表示计算符合内容大小的优先级</li>
+</ul>
+<blockquote>
+<p>通过 <code>NSLayoutConstraint</code> 的 <code>priority</code> 属性设置优先级；无论是 LayoutConstraint、VFL 还是 Anchor，最终都是转为 <code>NSLayoutConstraint</code> 约束对象，因此都可以设置约束的优先级</p>
+</blockquote>
+<h6 id="抗压缩-拉伸优先级"><a href="#抗压缩-拉伸优先级" class="headerlink" title="抗压缩/拉伸优先级"></a>抗压缩/拉伸优先级</h6><p>使用优先级可以决定布局中可以拉伸、压缩的视图，也可以针对不同的布局方向设置及获取抗压缩或拉伸的优先级</p>
+<ul>
+<li>抗压缩的优先级 <ul>
+<li><code>setContentHuggingPriority:(UILayoutPriority) forAxis:(UILayoutConstraintAxis)</code> </li>
+<li><code>contentHuggingPriorityForAxis:(UILayoutConstraintAxis)</code></li>
+</ul>
+</li>
+<li>抗拉伸的优先级 <ul>
+<li><code>setContentHuggingPriority:(UILayoutPriority) forAxis:(UILayoutConstraintAxis)</code></li>
+<li><code>contentCompressionResistancePriorityForAxis:(UILayoutConstraintAxis)</code></li>
+</ul>
+</li>
+</ul>
+<blockquote>
+<p>UILayoutConstraintAxis 是坐标轴枚举</p>
+</blockquote>
+<h3 id="锚点描述-LayoutAnchor"><a href="#锚点描述-LayoutAnchor" class="headerlink" title="锚点描述 LayoutAnchor"></a>锚点描述 LayoutAnchor</h3><p>为了简化创建Autolayout的方法，在iOS9之后推出了新的自动布局方案–锚点；<code>NSLayoutAnchor</code>是一个创建<code>NSLayoutConstraint</code>的工厂类；它用锚点抽象了 <code>NSLayoutAttribute</code>，使构建自动布局更加方便和简洁</p>
+<p><strong>锚点分类</strong></p>
+<table>
+<thead>
+<tr>
+<th align="center">Type</th>
+<th align="center">Anchor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">NSLayoutDimension   （尺寸）</td>
+<td align="center">width / height</td>
+</tr>
+<tr>
+<td align="center">NSLayoutXAxisAnchor （X轴）</td>
+<td align="center">left / right / leading / trailing / centerX</td>
+</tr>
+<tr>
+<td align="center">NSLayoutYAxisAnchor （Y轴）</td>
+<td align="center">top / bottom / firstBaseLine / lastBaseLine / centerY</td>
+</tr>
+</tbody></table>
+<h2 id="其他影响Layout的属性"><a href="#其他影响Layout的属性" class="headerlink" title="其他影响Layout的属性"></a>其他影响Layout的属性</h2><h3 id="布局操纵-LayoutGuide"><a href="#布局操纵-LayoutGuide" class="headerlink" title="布局操纵 LayoutGuide"></a>布局操纵 LayoutGuide</h3><p><code>UILayoutGuide</code>也是iOS9引入，用于定义一个可以参与自动布局的<strong>矩形区域</strong>，替代占位视图（dummy view）实现元素之间的等间距效果，或封装界面模块；依赖LayoutAnchor实现</p>
+<p><code>UILayoutGuide</code>不会在在 view 的层级树中展示，但是可以添加view到里面并展示，只是起到布局的作用；使用流程为：</p>
+<ol>
+<li>创建<code>UILayoutGuide</code>对象</li>
+<li>调用<code>UIView</code>的<code>addLayoutGuide</code>方法添加到View上；意味着guide将以view的坐标作为参照；可以调用<code>UILayoutGuide</code>的<code>layoutFrame</code>属性修改自身的frame</li>
+<li>通过anchor创建约束</li>
+</ol>
+<blockquote>
+<p>将 <code>UILayoutGuide</code> 当作不能显示的View使用即可</p>
+</blockquote>
+<h3 id="LayoutSupport"><a href="#LayoutSupport" class="headerlink" title="LayoutSupport"></a>LayoutSupport</h3><p><code>UILayoutSupport</code>是一个布局辅助协议；仅仅被<code>UIViewController</code>的<code>topLayoutGuide</code>和<code>bottomLayoutGuide</code>属性实现，用来控制ViewController与导航栏/底部之间布局间隙</p>
+<blockquote>
+<p>顶部和底部都是 <code>UILayoutGuide</code>，分别有自己的顶部/底部锚点以及高度</p>
+</blockquote>
+<h3 id="边距布局-LayoutMargin"><a href="#边距布局-LayoutMargin" class="headerlink" title="边距布局 LayoutMargin"></a>边距布局 LayoutMargin</h3><p>边距布局LayoutMargin是iOS8开始提供的一种布局机制，当对一个View设置了起始边距之后，它的所有子视图都会默认的与父视图有一个起始边距</p>
+<p><strong>数值型边距</strong></p>
+<ul>
+<li><code>UIEdgeInsets layoutMargins</code> 设置所有子视图的默认初始边距 </li>
+<li><code>NSDirectionalEdgeInsets directionalLayoutMargins</code> 从iOS11开始提供有方向的边距 ，支持<code>rtl</code></li>
+</ul>
+<blockquote>
+<p><code>layoutMargins</code>或<code>directionalLayoutMargins</code>默认会在所有子视图中都加上这个边距，<code>preservesSuperviewLayoutMargins</code>属性可以阻止这种继承，默认是 <code>NO</code>，也就是可以继承<br>当边距修改时，会触发回调<code>- layoutMarginsDidChange</code>；子视图可以重写这个方法手动修改自己的边距</p>
+</blockquote>
+<p><strong>占位型边距</strong></p>
+<ul>
+<li><code>UILayoutGuide *layoutMarginsGuide</code> </li>
+<li><code>UILayoutGuide *readableContentGuide</code> 只读属性，定义了用户不需要操作就可以轻易看见的区域</li>
+</ul>
+<h3 id="安全区域-safe-area"><a href="#安全区域-safe-area" class="headerlink" title="安全区域 safe area"></a>安全区域 safe area</h3><p>从iOS11（iPhoneX问世）开始还提供了多个安全区域（不遮挡navigationbar、tabbar、toolbar等视图的区域）相关的api</p>
+<ul>
+<li><code>insetsLayoutMarginsFromSafeArea</code>属性，可以自动判断从安全区域开始添加边距，默认<code>YES</code></li>
+<li><code>safeAreaInsets</code> 只读属性，返回安全区域所需的边距<blockquote>
+<p><code>- safeAreaInsetsDidChange</code> 安全边距触发后的回调</p>
+</blockquote>
+</li>
+<li><code>UILayoutGuide *safeAreaLayoutGuide</code> 安全区域占位</li>
+</ul>
+<h3 id="各种视图边距处理"><a href="#各种视图边距处理" class="headerlink" title="各种视图边距处理"></a>各种视图边距处理</h3><table>
+<tr><th>视图类型</th><th>iOS 7 ～ iOS 11</th><th>iOS 11 ～</th></tr>
+
+<tr><td>UIViewController</td><td> `topLayoutGuide` 和  `bottomLayoutGuide` ，iOS 11 废弃，使用 `view.safeAreaLayoutGuide` 代替</td><td>`additionalSafeAreaInsets` 管理安全边距</td></tr>
+
+<tr><td>UIView</td><td></td><td> `safeAreaInsets` 和 `safeAreaLayoutGuide`</td></tr>
+
+<tr><td>UIScrollView</td><td rowspan=3>使用 `UIViewController` 中的 `automaticallyAdjustsScrollViewInsets` 属性可以自动调整 `scrollview` 的边距；常出现 scrollview 部分被遮挡的 BUG，关闭这个属性解决；iOS 11 废弃</td>
+
+<td>使用 `UIScrollViewContentInsetAdjustmentBehavior contentInsetAdjustmentBehavior` 属性调整边距 
+
+<ul>
+<li>Automatic       类似 <code>ScrollableAxes</code>，但是始终会调整竖直方向上的间距</li>
+<li>ScrollableAxes  只调整滚动的方向；<code>contentSize.width/height &gt; frame.size.width/height or alwaysBounceHorizontal/Vertical = YES</code></li>
+<li>Never           不调整</li>
+<li>Always          根据 <code>safeAreaInsets</code> 的值始终调整 scrollview 的安全区域</li>
+</ul>
+<p><code>adjustedContentInset</code> 属性可以获取实际的 contentInset, <code>contentinset</code> 属性获取的值不再准确</td></tr></p>
+<tr><td>UITableView</td><td>引入 insetsContentViewsToSafeArea 属性，cell 的 `contentView` 会自动留出默认的安全距离；默认为 `True`</td></tr>
+
+<tr><td>UICollectionView</td><td>
+自定义 `CollectionCell` 时通过 UIView 的相关属性设置安全边距
+
+<p><code>UICollectionViewFlowLayout</code> 提供了新的枚举属性 <code>sectionInsetReference</code> 来设置整个 collectionView 的安全距离</td></tr></p>
+</table>
+ 
+      <!-- reward -->
+      
+    </div>
+    
+
+    <!-- copyright -->
+    
+    <div class="declare">
+      <ul class="post-copyright">
+        <li>
+          <i class="ri-copyright-line"></i>
+          <strong>Copyright： </strong>
+          
+          Copyright is owned by the author. For commercial reprints, please contact the author for authorization. For non-commercial reprints, please indicate the source.
+          
+        </li>
+      </ul>
+    </div>
+    
+    <footer class="article-footer">
+       
+<div class="share-btn">
+      <span class="share-sns share-outer">
+        <i class="ri-share-forward-line"></i>
+        分享
+      </span>
+      <div class="share-wrap">
+        <i class="arrow"></i>
+        <div class="share-icons">
+          
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="ri-weibo-fill"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="ri-wechat-fill"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="ri-qq-fill"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="ri-douban-line"></i>
+          </a>
+          <!-- <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a> -->
+          
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="ri-facebook-circle-fill"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="ri-twitter-fill"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="ri-google-fill"></i>
+          </a>
+        </div>
+      </div>
+</div>
+
+<div class="wx-share-modal">
+    <a class="modal-close" href="javascript:;"><i class="ri-close-circle-line"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://notes.honqi.ink/2018/03/02/Cocoa/iOS/Layout/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div id="share-mask"></div>  
+    </footer>
+  </div>
+
+   
+  <nav class="article-nav">
+    
+      <a href="/2018/05/21/Cocoa/iOS/iOS%20%E4%B8%AD%E7%9A%84%E9%94%81/" class="article-nav-link">
+        <strong class="article-nav-caption">上一篇</strong>
+        <div class="article-nav-title">
+          
+            iOS 中的锁总结
+          
+        </div>
+      </a>
+    
+    
+      <a href="/2018/01/12/Cocoa/iOS/Runloop/" class="article-nav-link">
+        <strong class="article-nav-caption">下一篇</strong>
+        <div class="article-nav-title">Runloop</div>
+      </a>
+    
+  </nav>
+
+   
+<!-- valine评论 -->
+<div id="vcomments-box">
+  <div id="vcomments"></div>
+</div>
+<script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/valine@1.4.14/dist/Valine.min.js"></script>
+<script>
+  new Valine({
+    el: "#vcomments",
+    app_id: "",
+    app_key: "",
+    path: window.location.pathname,
+    avatar: "monsterid",
+    placeholder: "给我的文章加点评论吧~",
+    recordIP: true,
+  });
+  const infoEle = document.querySelector("#vcomments .info");
+  if (infoEle && infoEle.childNodes && infoEle.childNodes.length > 0) {
+    infoEle.childNodes.forEach(function (item) {
+      item.parentNode.removeChild(item);
+    });
+  }
+</script>
+<style>
+  #vcomments-box {
+    padding: 5px 30px;
+  }
+
+  @media screen and (max-width: 800px) {
+    #vcomments-box {
+      padding: 5px 0px;
+    }
+  }
+
+  #vcomments-box #vcomments {
+    background-color: #fff;
+  }
+
+  .v .vlist .vcard .vh {
+    padding-right: 20px;
+  }
+
+  .v .vlist .vcard {
+    padding-left: 10px;
+  }
+</style>
+
+ 
+   
+     
+</article>
+
+</section>
+      <footer class="footer">
+  <div class="outer">
+    <ul>
+      <li>
+        Copyrights &copy;
+        2017-2021
+        <i class="ri-heart-fill heart_icon"></i> HonQi
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        
+        Powered by <a href="https://hexo.io" target="_blank">Hexo</a>
+        <span class="division">|</span>
+        Theme - <a href="https://github.com/Shen-Yu/hexo-theme-ayer" target="_blank">Ayer</a>
+        
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+      </li>
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      <li>
+        <!-- cnzz统计 -->
+        
+      </li>
+    </ul>
+  </div>
+</footer>
+      <div class="float_btns">
+        <div class="totop" id="totop">
+  <i class="ri-arrow-up-line"></i>
+</div>
+
+<div class="todark" id="todark">
+  <i class="ri-moon-line"></i>
+</div>
+
+      </div>
+    </main>
+    <aside class="sidebar on">
+      <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+  <div class="logo">
+    <a href="/"><img src="/avatar.png" alt="HonQi&#39;s Letter"></a>
+  </div>
+  
+  <ul class="nav nav-main">
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/">主页</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/archives">归档</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/categories">分类</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags">标签</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/about">关于我</a>
+    </li>
+    
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      
+      <a class="nav-item-link nav-item-search"  title="Search">
+        <i class="ri-search-line"></i>
+      </a>
+      
+      
+      <a class="nav-item-link" target="_blank" href="/atom.xml" title="RSS Feed">
+        <i class="ri-rss-line"></i>
+      </a>
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+    </aside>
+    <div id="mask"></div>
+
+<!-- #reward -->
+<div id="reward">
+  <span class="close"><i class="ri-close-line"></i></span>
+  <p class="reward-p"><i class="ri-cup-line"></i>请我喝杯咖啡吧~</p>
+  <div class="reward-box">
+    
+    
+  </div>
+</div>
+    
+<script src="/js/jquery-2.0.3.min.js"></script>
+ 
+<script src="/js/lazyload.min.js"></script>
+
+<!-- Tocbot -->
+ 
+<script src="/js/tocbot.min.js"></script>
+
+<script>
+  tocbot.init({
+    tocSelector: ".tocbot",
+    contentSelector: ".article-entry",
+    headingSelector: "h1, h2, h3, h4, h5, h6",
+    hasInnerContainers: true,
+    scrollSmooth: true,
+    scrollContainer: "main",
+    positionFixedSelector: ".tocbot",
+    positionFixedClass: "is-position-fixed",
+    fixedSidebarOffset: "auto",
+  });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.js"></script>
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.css"
+/>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js"></script>
+
+<script src="/dist/main.js"></script>
+
+<!-- ImageViewer -->
+ <!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                <!--  Controls are self-explanatory. Order can be changed. -->
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" style="display:none" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.min.css">
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"></script>
+
+<script>
+    function viewer_init() {
+        let pswpElement = document.querySelectorAll('.pswp')[0];
+        let $imgArr = document.querySelectorAll(('.article-entry img:not(.reward-img)'))
+
+        $imgArr.forEach(($em, i) => {
+            $em.onclick = () => {
+                // slider展开状态
+                // todo: 这样不好，后面改成状态
+                if (document.querySelector('.left-col.show')) return
+                let items = []
+                $imgArr.forEach(($em2, i2) => {
+                    let img = $em2.getAttribute('data-idx', i2)
+                    let src = $em2.getAttribute('data-target') || $em2.getAttribute('src')
+                    let title = $em2.getAttribute('alt')
+                    // 获得原图尺寸
+                    const image = new Image()
+                    image.src = src
+                    items.push({
+                        src: src,
+                        w: image.width || $em2.width,
+                        h: image.height || $em2.height,
+                        title: title
+                    })
+                })
+                var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, {
+                    index: parseInt(i)
+                });
+                gallery.init()
+            }
+        })
+    }
+    viewer_init()
+</script> 
+<!-- MathJax -->
+
+<!-- Katex -->
+
+<!-- busuanzi  -->
+
+<!-- ClickLove -->
+
+<!-- ClickBoom1 -->
+
+<!-- ClickBoom2 -->
+
+<!-- CodeCopy -->
+ 
+<link rel="stylesheet" href="/css/clipboard.css">
+ <script src="https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js"></script>
+<script>
+  function wait(callback, seconds) {
+    var timelag = null;
+    timelag = window.setTimeout(callback, seconds);
+  }
+  !function (e, t, a) {
+    var initCopyCode = function(){
+      var copyHtml = '';
+      copyHtml += '<button class="btn-copy" data-clipboard-snippet="">';
+      copyHtml += '<i class="ri-file-copy-2-line"></i><span>COPY</span>';
+      copyHtml += '</button>';
+      $(".highlight .code pre").before(copyHtml);
+      $(".article pre code").before(copyHtml);
+      var clipboard = new ClipboardJS('.btn-copy', {
+        target: function(trigger) {
+          return trigger.nextElementSibling;
+        }
+      });
+      clipboard.on('success', function(e) {
+        let $btn = $(e.trigger);
+        $btn.addClass('copied');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-checkbox-circle-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPIED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-checkbox-circle-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+      clipboard.on('error', function(e) {
+        e.clearSelection();
+        let $btn = $(e.trigger);
+        $btn.addClass('copy-failed');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-time-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPY FAILED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-time-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+    }
+    initCopyCode();
+  }(window, document);
+</script>
+ 
+<!-- CanvasBackground -->
+
+<script>
+  if (window.mermaid) {
+    mermaid.initialize({ theme: "forest" });
+  }
+</script>
+
+
+    
+  </div>
+</body>
+
+</html>

@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+
+
+<html lang="zh-Hans">
+  
+
+    <head>
+      <meta charset="utf-8" />
+       
+      <meta name="keywords" content="iOS 开发,Objective-C,Swift,Cocoa" />
+       
+      <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1"
+      />
+      <title>GCD |  HonQi&#39;s Letter</title>
+  <meta name="generator" content="hexo-theme-ayer">
+      
+      <link rel="shortcut icon" href="/favicon.ico" />
+       
+<link rel="stylesheet" href="/dist/main.css">
+
+      <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/css/remixicon.min.css"
+      />
+      
+<link rel="stylesheet" href="/css/custom.css">
+ 
+      <script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+       
+ 
+
+      <!-- mermaid -->
+      
+    <link rel="alternate" href="/atom.xml" title="HonQi's Letter" type="application/atom+xml">
+</head>
+  </html>
+</html>
+
+
+<body>
+  <div id="app">
+    
+      
+    <main class="content on">
+      <section class="outer">
+  <article
+  id="post-Cocoa/iOS/GCD"
+  class="article article-type-post"
+  itemscope
+  itemprop="blogPost"
+  data-scroll-reveal
+>
+  <div class="article-inner">
+    
+    <header class="article-header">
+       
+<h1 class="article-title sea-center" style="border-left:0" itemprop="name">
+  GCD
+</h1>
+ 
+
+      
+    </header>
+     
+    <div class="article-meta">
+      <a href="/2018/09/13/Cocoa/iOS/GCD/" class="article-date">
+  <time datetime="2018-09-13T16:00:00.000Z" itemprop="datePublished">2018-09-14</time>
+</a> 
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/cocoa/">Cocoa</a> / <a class="article-category-link" href="/categories/cocoa/gcd/">GCD</a>
+  </div>
+  
+<div class="word_count">
+    <span class="post-time">
+        <span class="post-meta-item-icon">
+            <i class="ri-quill-pen-line"></i>
+            <span class="post-meta-item-text"> Word count:</span>
+            <span class="post-count">1.5k</span>
+        </span>
+    </span>
+
+    <span class="post-time">
+        &nbsp; | &nbsp;
+        <span class="post-meta-item-icon">
+            <i class="ri-book-open-line"></i>
+            <span class="post-meta-item-text"> Reading time≈</span>
+            <span class="post-count">5 min</span>
+        </span>
+    </span>
+</div>
+ 
+    </div>
+      
+    <div class="tocbot"></div>
+
+
+
+
+  
+    <div class="article-entry" itemprop="articleBody">
+       
+  <p>GCD 是 Cocoa 中提供的系统级线程管理技术；它将多线程的管理抽象为队列 Queue。只需要将需要执行的任务添加到 Queue 中，GCD 就能调度或生成线程执行任务；同时对线程的管理是作为系统的一部分来实现的，可以实现线程的统一管理，效率也是最好的</p>
+<span id="more"></span>
+
+<h2 id="Queue"><a href="#Queue" class="headerlink" title="Queue"></a>Queue</h2><p><code>Dispatch Queue</code> 是需要执行处理的等待队列；当需要执行的任务被添加到 Queue 中之后会按照先进先出的顺序被取出执行</p>
+<blockquote>
+<p><code>Dispatch Queue</code> 是一个链表实现的队列，其中链节点是一个 <code>dispatch_continuation_t</code> 结构体，里面包含了所执行的任务函数以及一些额外信息</p>
+</blockquote>
+<h3 id="Serial-Queue-和-Concurrent-Queue"><a href="#Serial-Queue-和-Concurrent-Queue" class="headerlink" title="Serial Queue 和 Concurrent Queue"></a>Serial Queue 和 Concurrent Queue</h3><p><code>Dispatch Queue</code> 分为线性执行的 <code>Serial Dispatch Queue</code> 和并发执行的 <code>Concurrent Dispatch Queue</code></p>
+<ul>
+<li><code>Serial Dispatch Queue</code> 需要等待 Queue 中的上一个任务执行完毕才会继续执行下一个任务；只会使用一个线程</li>
+<li><code>Concurrent Dispatch Queue</code> 并发的同时执行多个任务；会同时使用多个线程，具体使用的<strong>线程数量由 XNU 内核根据资源情况决定并控制生成和结束</strong></li>
+</ul>
+<blockquote>
+<p>由于 <code>Serial Dispatch Queue</code> 会严格控制执行的顺序，所以每一个 <code>Serial Dispatch Queue</code> 都会被单独创建一个对应的线程；因此在大量使用 <code>Serial Dispatch Queue</code> 会因为创建了过多的线程影响性能</p>
+</blockquote>
+<h4 id="Main-Dispatch-Queue"><a href="#Main-Dispatch-Queue" class="headerlink" title="Main Dispatch Queue"></a>Main Dispatch Queue</h4><p><code>Main Dispatch Queue</code> 是在主线程中执行的 <code>Dispatch Queue</code>；因为主线程只有一个，所以 <code>Main Dispatch Queue</code> 是 <code>Serial Dispatch Queue</code></p>
+<blockquote>
+<p>所有添加到 <code>Main Dispatch Queue</code> 的任务都是在主线程的 Runloop 中执行</p>
+</blockquote>
+<h4 id="Global-Dispatch-Queue"><a href="#Global-Dispatch-Queue" class="headerlink" title="Global Dispatch Queue"></a>Global Dispatch Queue</h4><p><code>Global Dispatch Queue</code> 是<strong>系统的</strong>全局并发队列，所有的 App 都可以获取到它</p>
+<p><code>Global Dispatch Queue</code> 有 4 个优先级</p>
+<ul>
+<li><code>High Priority</code></li>
+<li><code>Default Priority</code></li>
+<li><code>Low Priority</code></li>
+<li><code>Background Priority</code></li>
+</ul>
+<p>XNU 内核会使用队列的优先级作为线程的执行优先级。但是由于用于处理 <code>Global Dispatch Queue</code> 的线程并不能保证实时性，所以线程优先级只是大致的判断，并不准确</p>
+<h4 id="自定义的-Dispatch-Queue"><a href="#自定义的-Dispatch-Queue" class="headerlink" title="自定义的 Dispatch Queue"></a>自定义的 Dispatch Queue</h4><p>使用 <code>dispatch_queue_create</code> 函数生成的 Queue；无论是 <code>Serial Dispatch Queue</code> 还是 <code>Concurrent Dispatch Queue</code>，都使用与<strong>默认优先级的 <code>Global Dispatch Queue</code></strong> 相同优先级的线程处理</p>
+<blockquote>
+<p>GCD 中的对象需要手动进行内存管理，所以自定义的 Dispatch Queue 需要通过 <code>dispatch_retain</code> 和 <code>disptach_release</code> 管理引用计数</p>
+</blockquote>
+<h4 id="dispath-set-target-queue"><a href="#dispath-set-target-queue" class="headerlink" title="dispath_set_target_queue"></a>dispath_set_target_queue</h4><p><code>dispath_set_target_queue</code> 函数可以改变 <code>Dispatch Queue</code> 的优先级</p>
+<h3 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h3><p><code>Dispatch Queue</code> 的管理和调度是通过底层的 <code>Libc pthread_workqueue</code> 和内核中的 <code>XNU workqueue</code></p>
+<p><img src="GCD/queue.jpg" alt="GCD queue"></p>
+<h4 id="libdispatch"><a href="#libdispatch" class="headerlink" title="libdispatch"></a>libdispatch</h4><p>在 <code>libdispatch</code> 层，主要有 <code>Main Dispatch Queue</code> 和 <code>Global Dispatch Queue</code> 两种队列</p>
+<p>其中 <code>Main Dispatch Queue</code> 通过主线程 <code>Runloop</code> 执行任务，不需要内核进行调度</p>
+<p>而 <code>Global Dispatch Queue</code> 则按照<strong>优先级</strong>以及<strong>是否并发</strong>分为 8 种：</p>
+<ul>
+<li><code>Global Dispatch Queue (High Priority)</code></li>
+<li><code>Global Dispatch Queue (Default Priority)</code></li>
+<li><code>Global Dispatch Queue (Low Priority)</code></li>
+<li><code>Global Dispatch Queue (Background Priority)</code></li>
+<li><code>Global Dispatch Queue (High Overcommit Priority)</code></li>
+<li><code>Global Dispatch Queue (Default Overcommit Priority)</code></li>
+<li><code>Global Dispatch Queue (Low Overcommit Priority)</code></li>
+<li><code>Global Dispatch Queue (Background Overcommit Priority)</code></li>
+</ul>
+<p>优先级中带有 <code>Overcommit</code> 表示用于 <code>Serial Dispatch Queue</code>，在 <code>Serial Dispatch Queue</code> 使用时，无论系统状态如何，都会强制生成新的线程处理 <code>Dispatch Queue</code></p>
+<h4 id="Libc-pthreads"><a href="#Libc-pthreads" class="headerlink" title="Libc (pthreads)"></a>Libc (pthreads)</h4><p><code>libdispatch</code> 中的每一个种 <code>Global Dispatch Queue</code> 各自使用一个 <code>Libc</code> 中的 <code>pthread_workqueue</code></p>
+<ol>
+<li>在 GCD 初始化时，通过 <code>pthread_workqueue_create_np</code> 生成 <code>pthread_workqueue</code></li>
+<li>通过 <code>pthread_workqueue</code> 的 <code>bsdthread_register</code> 和 <code>workq_open</code> 可以在 XNU 内核初始化 <code>workqueue</code> 之后获取 <code>workqueue</code> 的信息</li>
+</ol>
+<h4 id="XNU-内核"><a href="#XNU-内核" class="headerlink" title="XNU 内核"></a>XNU 内核</h4><p>XNU 内核中也有 4 种优先级的 <code>workqueue</code></p>
+<ul>
+<li>WORKQUEUE_HIGH_PRIOQUEUE</li>
+<li>WORKQUEUE_DEFAULT_PRIOQUEUE</li>
+<li>WORKQUEUE_LOW_PRIOQUEUE</li>
+<li>WORKQUEUE_BG_PRIOQUEUE</li>
+</ul>
+<p>这四种优先级与 <code>Dispatch Queue</code> 中的优先级相同；它们之间的对应关系如下</p>
+<p><img src="./GCD/priority-queue.png" alt="priority"></p>
+<h4 id="执行过程"><a href="#执行过程" class="headerlink" title="执行过程"></a>执行过程</h4><p>当在 <code>Global Dispatch Queue</code> 中执行任务时，完整的执行流程如下：</p>
+<ol>
+<li><code>libdispatch</code> 从 <code>Global Dispatch Queue</code> 队列中取出 <code>Dispatch Continuation</code> 包装的任务</li>
+<li>将 <code>Global Dispatch Queue</code> 自身、符合其优先级的 <strong><code>workqueue</code> 信息</strong>以及 <code>Dispatch Continuation</code> 的回调函数等作为参数，调用 <code>pthread_workqueue_additem_np</code> 函数</li>
+<li><code>pthread_workqueue_additem_np</code> 函数使用 <code>workq_kernreturn</code> 系统调用，根据传入的 <code>workqueue</code> 信息找到对应优先级的 <code>workqueue</code>，通知 <code>workqueue</code> 增加应当执行的任务</li>
+<li>收到通知的 XNU 内核基于系统状态判断是否要生成新的线程。如果是 <code>Overcommit</code> 的 <code>Global Dispatch Queue</code>，则 <code>workqueue</code> 始终生成新的线程<ul>
+<li><code>workqueue</code> 中生成的线程只在 <code>workqueue</code> 的线程计划表中运行，相当于线程只用于对应优先级的任务。所以与一般的线程上下文切换不同，性能会更好</li>
+</ul>
+</li>
+<li><code>workqueue</code> 的线程接着调用 <code>pthread_workqueue</code> 函数，<code>pthread_workqueue</code> 函数会调用 <code>libdispatch</code> 中的回调函数，在该回调函数中执行 <code>Dispatch Continuation</code> 中的任务</li>
+<li>任务执行完毕后，进行通知 <code>Dispatch Group</code> 任务结束、释放 <code>Dispatch Continuation</code> 等处理；执行 Queue 中的下一个任务</li>
+</ol>
+<h4 id="自定义-Dispatch-Queue-执行"><a href="#自定义-Dispatch-Queue-执行" class="headerlink" title="自定义 Dispatch Queue 执行"></a>自定义 Dispatch Queue 执行</h4><p>上面说明了 <code>Main Dispatch Queue</code> 和 <code>Global Dispatch Queue</code> 的执行原理。那如果是自定义的 <code>Dispatch Queue</code> 是怎么执行的呢？</p>
+<p>自定义的 <code>Dispatch Queue</code> 都有一个执行目标 Queue，最终都是通过执行目标 Queue 执行 Queue 中的任务；理所当然的，这些执行目标 Queue 就只能是 <code>Main Dispatch Queue</code> 和 <code>Global Dispatch Queue</code> 中的其中一个</p>
+<blockquote>
+<p>创建的 Queue 默认使用 Default 优先级的 Global Queue 作为目标；可以使用 <code>dispatch_queue_create_with_target</code> 方法在创建时指定目标 Queue</p>
+</blockquote>
+<h4 id="再谈-dispath-set-target-queue"><a href="#再谈-dispath-set-target-queue" class="headerlink" title="再谈 dispath_set_target_queue"></a>再谈 dispath_set_target_queue</h4><p><code>dispath_set_target_queue</code> 函数不仅可以改变 <code>Dispatch Queue</code> 的优先级；还可以改变 Queue 的目标执行 Queue。</p>
+<blockquote>
+<p>如果在多个 <code>Serial Dispatch Queue</code> 中用 <code>dispath_set_target_queue</code> 函数指定执行目标为同一个 <code>Serial Dispatch Queue</code>；那么原本应该并行执行的多个 <code>Serial Dispatch Queue</code> 只能在目标 <code>Serial Dispatch Queue</code> 上串行执行</p>
+</blockquote>
+<h2 id="其他-GCD-功能简介"><a href="#其他-GCD-功能简介" class="headerlink" title="其他 GCD 功能简介"></a>其他 GCD 功能简介</h2><h3 id="dispatch-after"><a href="#dispatch-after" class="headerlink" title="dispatch_after"></a>dispatch_after</h3><p>延迟在指定 Queue 执行任务；<code>dispatch_after</code> 实质不是在指定时间之后执行任务，而是在指定时间之后将任务添加到指定的 Queue 立即执行</p>
+<p>定时添加任务的定时器是通过 Runloop 实现的，所以时间同样不会十分精确</p>
+<blockquote>
+<p><code>dispatch_time</code> 用于获取相对时间；<code>dispatch_walltime</code> 用于获取绝对时间</p>
+</blockquote>
+<h3 id="dispatch-group"><a href="#dispatch-group" class="headerlink" title="dispatch_group"></a>dispatch_group</h3><p>waiting …</p>
+<h3 id="dispatch-barrier"><a href="#dispatch-barrier" class="headerlink" title="dispatch_barrier_"></a>dispatch_barrier_</h3><h3 id="dispatch-apply"><a href="#dispatch-apply" class="headerlink" title="dispatch_apply"></a>dispatch_apply</h3><p><code>dispatch_apply</code> 类似于 <code>dispatch_sync</code>，会等待所有函数执行完毕</p>
+ 
+      <!-- reward -->
+      
+    </div>
+    
+
+    <!-- copyright -->
+    
+    <div class="declare">
+      <ul class="post-copyright">
+        <li>
+          <i class="ri-copyright-line"></i>
+          <strong>Copyright： </strong>
+          
+          Copyright is owned by the author. For commercial reprints, please contact the author for authorization. For non-commercial reprints, please indicate the source.
+          
+        </li>
+      </ul>
+    </div>
+    
+    <footer class="article-footer">
+       
+<div class="share-btn">
+      <span class="share-sns share-outer">
+        <i class="ri-share-forward-line"></i>
+        分享
+      </span>
+      <div class="share-wrap">
+        <i class="arrow"></i>
+        <div class="share-icons">
+          
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="ri-weibo-fill"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="ri-wechat-fill"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="ri-qq-fill"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="ri-douban-line"></i>
+          </a>
+          <!-- <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a> -->
+          
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="ri-facebook-circle-fill"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="ri-twitter-fill"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="ri-google-fill"></i>
+          </a>
+        </div>
+      </div>
+</div>
+
+<div class="wx-share-modal">
+    <a class="modal-close" href="javascript:;"><i class="ri-close-circle-line"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://notes.honqi.ink/2018/09/13/Cocoa/iOS/GCD/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div id="share-mask"></div>  
+    </footer>
+  </div>
+
+   
+  <nav class="article-nav">
+    
+      <a href="/2018/09/26/Cocoa/ObjC/Category%20%E5%8E%9F%E7%90%86/" class="article-nav-link">
+        <strong class="article-nav-caption">上一篇</strong>
+        <div class="article-nav-title">
+          
+            Category 原理
+          
+        </div>
+      </a>
+    
+    
+      <a href="/2018/06/13/Cocoa/ObjC/NSObject%20%E4%B8%AD%E7%9A%84%E6%B6%88%E6%81%AF%E5%8F%91%E9%80%81%E5%BA%94%E7%94%A8/" class="article-nav-link">
+        <strong class="article-nav-caption">下一篇</strong>
+        <div class="article-nav-title">NSObject 中的消息发送应用</div>
+      </a>
+    
+  </nav>
+
+   
+<!-- valine评论 -->
+<div id="vcomments-box">
+  <div id="vcomments"></div>
+</div>
+<script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/valine@1.4.14/dist/Valine.min.js"></script>
+<script>
+  new Valine({
+    el: "#vcomments",
+    app_id: "",
+    app_key: "",
+    path: window.location.pathname,
+    avatar: "monsterid",
+    placeholder: "给我的文章加点评论吧~",
+    recordIP: true,
+  });
+  const infoEle = document.querySelector("#vcomments .info");
+  if (infoEle && infoEle.childNodes && infoEle.childNodes.length > 0) {
+    infoEle.childNodes.forEach(function (item) {
+      item.parentNode.removeChild(item);
+    });
+  }
+</script>
+<style>
+  #vcomments-box {
+    padding: 5px 30px;
+  }
+
+  @media screen and (max-width: 800px) {
+    #vcomments-box {
+      padding: 5px 0px;
+    }
+  }
+
+  #vcomments-box #vcomments {
+    background-color: #fff;
+  }
+
+  .v .vlist .vcard .vh {
+    padding-right: 20px;
+  }
+
+  .v .vlist .vcard {
+    padding-left: 10px;
+  }
+</style>
+
+ 
+   
+     
+</article>
+
+</section>
+      <footer class="footer">
+  <div class="outer">
+    <ul>
+      <li>
+        Copyrights &copy;
+        2017-2021
+        <i class="ri-heart-fill heart_icon"></i> HonQi
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        
+        Powered by <a href="https://hexo.io" target="_blank">Hexo</a>
+        <span class="division">|</span>
+        Theme - <a href="https://github.com/Shen-Yu/hexo-theme-ayer" target="_blank">Ayer</a>
+        
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+      </li>
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      <li>
+        <!-- cnzz统计 -->
+        
+      </li>
+    </ul>
+  </div>
+</footer>
+      <div class="float_btns">
+        <div class="totop" id="totop">
+  <i class="ri-arrow-up-line"></i>
+</div>
+
+<div class="todark" id="todark">
+  <i class="ri-moon-line"></i>
+</div>
+
+      </div>
+    </main>
+    <aside class="sidebar on">
+      <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+  <div class="logo">
+    <a href="/"><img src="/avatar.png" alt="HonQi&#39;s Letter"></a>
+  </div>
+  
+  <ul class="nav nav-main">
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/">主页</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/archives">归档</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/categories">分类</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags">标签</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/about">关于我</a>
+    </li>
+    
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      
+      <a class="nav-item-link nav-item-search"  title="Search">
+        <i class="ri-search-line"></i>
+      </a>
+      
+      
+      <a class="nav-item-link" target="_blank" href="/atom.xml" title="RSS Feed">
+        <i class="ri-rss-line"></i>
+      </a>
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+    </aside>
+    <div id="mask"></div>
+
+<!-- #reward -->
+<div id="reward">
+  <span class="close"><i class="ri-close-line"></i></span>
+  <p class="reward-p"><i class="ri-cup-line"></i>请我喝杯咖啡吧~</p>
+  <div class="reward-box">
+    
+    
+  </div>
+</div>
+    
+<script src="/js/jquery-2.0.3.min.js"></script>
+ 
+<script src="/js/lazyload.min.js"></script>
+
+<!-- Tocbot -->
+ 
+<script src="/js/tocbot.min.js"></script>
+
+<script>
+  tocbot.init({
+    tocSelector: ".tocbot",
+    contentSelector: ".article-entry",
+    headingSelector: "h1, h2, h3, h4, h5, h6",
+    hasInnerContainers: true,
+    scrollSmooth: true,
+    scrollContainer: "main",
+    positionFixedSelector: ".tocbot",
+    positionFixedClass: "is-position-fixed",
+    fixedSidebarOffset: "auto",
+  });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.js"></script>
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.css"
+/>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js"></script>
+
+<script src="/dist/main.js"></script>
+
+<!-- ImageViewer -->
+ <!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                <!--  Controls are self-explanatory. Order can be changed. -->
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" style="display:none" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.min.css">
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"></script>
+
+<script>
+    function viewer_init() {
+        let pswpElement = document.querySelectorAll('.pswp')[0];
+        let $imgArr = document.querySelectorAll(('.article-entry img:not(.reward-img)'))
+
+        $imgArr.forEach(($em, i) => {
+            $em.onclick = () => {
+                // slider展开状态
+                // todo: 这样不好，后面改成状态
+                if (document.querySelector('.left-col.show')) return
+                let items = []
+                $imgArr.forEach(($em2, i2) => {
+                    let img = $em2.getAttribute('data-idx', i2)
+                    let src = $em2.getAttribute('data-target') || $em2.getAttribute('src')
+                    let title = $em2.getAttribute('alt')
+                    // 获得原图尺寸
+                    const image = new Image()
+                    image.src = src
+                    items.push({
+                        src: src,
+                        w: image.width || $em2.width,
+                        h: image.height || $em2.height,
+                        title: title
+                    })
+                })
+                var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, {
+                    index: parseInt(i)
+                });
+                gallery.init()
+            }
+        })
+    }
+    viewer_init()
+</script> 
+<!-- MathJax -->
+
+<!-- Katex -->
+
+<!-- busuanzi  -->
+
+<!-- ClickLove -->
+
+<!-- ClickBoom1 -->
+
+<!-- ClickBoom2 -->
+
+<!-- CodeCopy -->
+ 
+<link rel="stylesheet" href="/css/clipboard.css">
+ <script src="https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js"></script>
+<script>
+  function wait(callback, seconds) {
+    var timelag = null;
+    timelag = window.setTimeout(callback, seconds);
+  }
+  !function (e, t, a) {
+    var initCopyCode = function(){
+      var copyHtml = '';
+      copyHtml += '<button class="btn-copy" data-clipboard-snippet="">';
+      copyHtml += '<i class="ri-file-copy-2-line"></i><span>COPY</span>';
+      copyHtml += '</button>';
+      $(".highlight .code pre").before(copyHtml);
+      $(".article pre code").before(copyHtml);
+      var clipboard = new ClipboardJS('.btn-copy', {
+        target: function(trigger) {
+          return trigger.nextElementSibling;
+        }
+      });
+      clipboard.on('success', function(e) {
+        let $btn = $(e.trigger);
+        $btn.addClass('copied');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-checkbox-circle-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPIED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-checkbox-circle-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+      clipboard.on('error', function(e) {
+        e.clearSelection();
+        let $btn = $(e.trigger);
+        $btn.addClass('copy-failed');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-time-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPY FAILED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-time-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+    }
+    initCopyCode();
+  }(window, document);
+</script>
+ 
+<!-- CanvasBackground -->
+
+<script>
+  if (window.mermaid) {
+    mermaid.initialize({ theme: "forest" });
+  }
+</script>
+
+
+    
+  </div>
+</body>
+
+</html>

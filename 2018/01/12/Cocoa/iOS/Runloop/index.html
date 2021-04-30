@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+
+
+<html lang="zh-Hans">
+  
+
+    <head>
+      <meta charset="utf-8" />
+       
+      <meta name="keywords" content="iOS 开发,Objective-C,Swift,Cocoa" />
+       
+      <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1"
+      />
+      <title>Runloop |  HonQi&#39;s Letter</title>
+  <meta name="generator" content="hexo-theme-ayer">
+      
+      <link rel="shortcut icon" href="/favicon.ico" />
+       
+<link rel="stylesheet" href="/dist/main.css">
+
+      <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/css/remixicon.min.css"
+      />
+      
+<link rel="stylesheet" href="/css/custom.css">
+ 
+      <script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+       
+ 
+
+      <!-- mermaid -->
+      
+    <link rel="alternate" href="/atom.xml" title="HonQi's Letter" type="application/atom+xml">
+</head>
+  </html>
+</html>
+
+
+<body>
+  <div id="app">
+    
+      
+    <main class="content on">
+      <section class="outer">
+  <article
+  id="post-Cocoa/iOS/Runloop"
+  class="article article-type-post"
+  itemscope
+  itemprop="blogPost"
+  data-scroll-reveal
+>
+  <div class="article-inner">
+    
+    <header class="article-header">
+       
+<h1 class="article-title sea-center" style="border-left:0" itemprop="name">
+  Runloop
+</h1>
+ 
+
+      
+    </header>
+     
+    <div class="article-meta">
+      <a href="/2018/01/12/Cocoa/iOS/Runloop/" class="article-date">
+  <time datetime="2018-01-12T16:00:00.000Z" itemprop="datePublished">2018-01-13</time>
+</a> 
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/runloop/">Runloop</a> / <a class="article-category-link" href="/categories/runloop/ios/">iOS</a>
+  </div>
+  
+<div class="word_count">
+    <span class="post-time">
+        <span class="post-meta-item-icon">
+            <i class="ri-quill-pen-line"></i>
+            <span class="post-meta-item-text"> Word count:</span>
+            <span class="post-count">2.5k</span>
+        </span>
+    </span>
+
+    <span class="post-time">
+        &nbsp; | &nbsp;
+        <span class="post-meta-item-icon">
+            <i class="ri-book-open-line"></i>
+            <span class="post-meta-item-text"> Reading time≈</span>
+            <span class="post-count">9 min</span>
+        </span>
+    </span>
+</div>
+ 
+    </div>
+      
+    <div class="tocbot"></div>
+
+
+
+
+  
+    <div class="article-entry" itemprop="articleBody">
+       
+  <p>Runloop 是一种事件处理模型；在很多系统和框架中都有实现。它的作用是保证线程能不停的处理新的任务，而不是处理完任务之后就退出。</p>
+<span id="more"></span>
+
+<p>通常一个线程在处理完任务之后就会立刻退出，避免占用资源。但是对于 App 来说，主线程需要等待用户的操作并且能立刻处理事件做出响应。就需要一种机制满足以下需求：</p>
+<ul>
+<li>处理完之后不会退出</li>
+<li>线程能随时响应并处理事件</li>
+<li>线程等待时不占用太多资源</li>
+</ul>
+<p>线程处理完事件不退出并且能随时响应的需求可以通过一个循环功能实现：</p>
+<figure class="highlight objc"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> run() &#123;</span><br><span class="line">    <span class="keyword">do</span> &#123;</span><br><span class="line">        <span class="comment">// handle new task</span></span><br><span class="line">    &#125; <span class="keyword">while</span>(True)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>循环不会占用太多的资源；这种实现的重点就在于：</p>
+<ul>
+<li>如何让线程在没有新的事件时休眠，避免浪费资源</li>
+<li>如果管理事件，让有新的事件时通知到线程并将它唤醒</li>
+</ul>
+<h2 id="Cocoa-中的实现"><a href="#Cocoa-中的实现" class="headerlink" title="Cocoa 中的实现"></a>Cocoa 中的实现</h2><p>Cocoa 中的 Runloop 实现是一个对象，通过个对象管理其需要处理的事件和消息；并提供一个入口函数来开启<strong>事件循环</strong>的逻辑。</p>
+<p>线程调用 Runloop 对象的入口函数后就会一直处于这个函数内部的 <strong>接收消息 –&gt; 处理事件 –&gt; 继续等待</strong> 的循环中，直到循环结束（收到退出的消息）为止</p>
+<ul>
+<li><code>CFRunloopRef</code> 是 <code>CoreFoundation</code> 中的 Runloop 实现，提供了纯 C 的 Api 接口；所有 Api 都是线程安全的</li>
+<li><code>NSRunloop</code> 是对 <code>CFRunloopRef</code> 的面向对象封装，该对象的 Api 不是线程安全的</li>
+</ul>
+<h2 id="Runloop-与线程的关系"><a href="#Runloop-与线程的关系" class="headerlink" title="Runloop 与线程的关系"></a>Runloop 与线程的关系</h2><p><code>CFRunloopRef</code> 是基于 <code>pthread</code> 来管理的，Runloop 不能直接创建，只能通过 <code>CFRunLoopGetMain() &amp; CFRunLoopGetCurrent()</code> 两个函数获取</p>
+<ul>
+<li>线程和 Runloop 之间是一一对应的。系统维护了一个全局的 hash 表，pthread 作为键值，对应的 Runloop 是 value</li>
+<li>线程对应的 Runloop 并不会随线程一起创建，只有第一次获取 Runloop 时才会创建</li>
+<li>当线程被销毁时，对应的 Runloop 则会随之销毁</li>
+</ul>
+<blockquote>
+<p>由于 Runloop 不主动获取不会创建，所以一些需要在 Runloop 中执行的方法在子线程中调用时可能会无效；主线程的 Runloop 会被系统早早的创建，所以不存在这个问题</p>
+</blockquote>
+<h2 id="Runloop-实现"><a href="#Runloop-实现" class="headerlink" title="Runloop 实现"></a>Runloop 实现</h2><p>CoreFoundation 中关于 Runloop 有 5 个类：</p>
+<ul>
+<li>CFRunLoopRef</li>
+<li>CFRunLoopModeRef</li>
+<li>CFRunLoopSourceRef</li>
+<li>CFRunLoopTimerRef</li>
+<li>CFRunLoopObserverRef</li>
+</ul>
+<p>其中 <code>CFRunLoopRef</code> 类没有对外暴露，它们之间的关系结构如下：</p>
+<p><img src="./Runloop/CFRunLoopRef.png" alt="CFRunLoopRef"></p>
+<ul>
+<li>一个 Runloop 包含多个 Mode；一个 Mode 又包含多个 Source/Timer/Observer；Source/Timer/Observer 被抽象为 Mode Item</li>
+<li>一个 Item 可以同时加入多个 Mode 中</li>
+<li>一个 Item 被多次加入到同一个 Mode 中是无效的</li>
+<li>如果当前的 Mode 中没有 Item，Runloop 会直接退出，<em>不进入循环</em></li>
+</ul>
+<h3 id="Mode"><a href="#Mode" class="headerlink" title="Mode"></a>Mode</h3><p>每次调用 Runloop 的主函数开启一次循环时，只能指定其中一个 Mode 作为 <code>currentMode</code>。如果需要切换 Mode，只能退出此次循环，再重新指定一个 Mode 并开启一个新的循环。这样做的目的是将不同 Mode 下的 <code>Source/Timer/Observer</code> 分隔，让其不要互相影响</p>
+<p>CFRunLoopMode 的代码结构如下</p>
+<figure class="highlight objc"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> __CFRunLoopMode &#123;</span><br><span class="line">    <span class="built_in">CFStringRef</span> _name;</span><br><span class="line">    <span class="built_in">CFMutableSetRef</span> _sources0;</span><br><span class="line">    <span class="built_in">CFMutableSetRef</span> _sources1;</span><br><span class="line">    <span class="built_in">CFMutableArrayRef</span> _observers;</span><br><span class="line">    <span class="built_in">CFMutableArrayRef</span> _timers;</span><br><span class="line">    ...... <span class="comment">// Others</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="CommonModes"><a href="#CommonModes" class="headerlink" title="CommonModes"></a>CommonModes</h3><p>Runloop 中有个抽象叫 <code>CommonModes</code>：一个 Mode 可以将自己标记为 <strong>Common</strong>，它的 <code>name</code> 会被添加到 Runloop 的 <code>_commonModes</code> 属性中。之后每当 Runloop 的内容发生变化时，Runloop 都会将 <code>_commonModeItems</code> 中的 item 同步到 <code>_commonModes</code> 中记录的 Mode 中</p>
+<blockquote>
+<p>例如主线程中的 <code>kCFRunLoopDefaultMode &amp; UITrackingRunLoopMode</code> 两个 Mode 被标记为 Common；<code>kCFRunLoopDefaultMode</code> 是默认的 Mode，<code>UITrackingRunLoopMode</code> 是 ScrollView 滑动时的 Mode；当新的 item 被添加到 <code>_commonModeItems</code> 中时，会被同步到这两个 Mode 中，意味着它能在 App 默认状态和 ScrollView 滚动状态同时生效</p>
+</blockquote>
+<ul>
+<li>Runloop 的结构</li>
+</ul>
+<figure class="highlight objc"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> __CFRunLoop &#123;</span><br><span class="line">    <span class="built_in">CFMutableSetRef</span> _commonModes;</span><br><span class="line">    <span class="built_in">CFMutableSetRef</span> _commonModeItems;</span><br><span class="line">    <span class="built_in">CFRunLoopModeRef</span> _currentMode;</span><br><span class="line">    <span class="built_in">CFMutableSetRef</span> _modes;</span><br><span class="line">    ...... <span class="comment">// Others</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="Source"><a href="#Source" class="headerlink" title="Source"></a>Source</h3><p><code>CFRunLoopSourceRef</code> 是事件的封装。Source 有两个版本：</p>
+<ul>
+<li>Source0：只包含一个回调（函数指针），不能主动触发事件。使用时需要手动唤醒 Runloop 来处理它</li>
+<li>Source1：包含了一个 <code>mach_port</code> 和一个回调（函数指针），用于通过内核和其他线程通信，可以主动唤醒 Runloop</li>
+</ul>
+<h3 id="Timer"><a href="#Timer" class="headerlink" title="Timer"></a>Timer</h3><p><code>CFRunLoopTimerRef</code> 是<strong>基于时间的触发器</strong>，包含一个时间长度和一个回调（函数指针）；当其被加入到 Runloop 时，Runloop 会注册到对应的时间点，当时间到时会唤醒 Runloop 执行回调</p>
+<h3 id="Observer"><a href="#Observer" class="headerlink" title="Observer"></a>Observer</h3><p><code>CFRunLoopObserverRef</code> 是 Runloop 观察者，每个 Observer 包含一个回调（函数指针），当 Runloop 的状态发生变化时，会调用对应观察者的回调</p>
+<figure class="highlight objc"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="built_in">CF_OPTIONS</span>(<span class="built_in">CFOptionFlags</span>, <span class="built_in">CFRunLoopActivity</span>) &#123;</span><br><span class="line">    kCFRunLoopEntry = (<span class="number">1</span>UL &lt;&lt; <span class="number">0</span>),           <span class="comment">// 进入 Runloop</span></span><br><span class="line">    kCFRunLoopBeforeTimers = (<span class="number">1</span>UL &lt;&lt; <span class="number">1</span>),    <span class="comment">// 即将处理 Timer</span></span><br><span class="line">    kCFRunLoopBeforeSources = (<span class="number">1</span>UL &lt;&lt; <span class="number">2</span>),   <span class="comment">// 即将处理 Source</span></span><br><span class="line">    kCFRunLoopBeforeWaiting = (<span class="number">1</span>UL &lt;&lt; <span class="number">5</span>),   <span class="comment">// 即将进入休眠等待</span></span><br><span class="line">    kCFRunLoopAfterWaiting = (<span class="number">1</span>UL &lt;&lt; <span class="number">6</span>),    <span class="comment">// 从休眠中被唤醒</span></span><br><span class="line">    kCFRunLoopExit = (<span class="number">1</span>UL &lt;&lt; <span class="number">7</span>),            <span class="comment">// 退出</span></span><br><span class="line">    kCFRunLoopAllActivities = <span class="number">0x0FFFFFFF</span>U   <span class="comment">// 所有事件</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h2 id="Runloop-接口"><a href="#Runloop-接口" class="headerlink" title="Runloop 接口"></a>Runloop 接口</h2><ul>
+<li>Mode 接口</li>
+</ul>
+<p><code>CFRunLoopAddCommonMode(CFRunLoopRef runloop, CFStringRef modeName);</code><br><code>CFRunLoopRunInMode(CFStringRef modeName, ...);</code></p>
+<blockquote>
+<p>只能通过 <code>modeName</code> 来管理内部的 Mode；当 Add 一个 <code>modeName</code> 而内部没有对应的 Mode 时系统会自动创建对应的 Mode；Runloop 中的 Mode 只能增加不能删除</p>
+</blockquote>
+<ul>
+<li>Source 接口</li>
+</ul>
+<p><code>CFRunLoopAddSource(CFRunLoopRef rl, CFRunLoopSourceRef source, CFStringRef modeName);</code><br><code>CFRunLoopRemoveSource(CFRunLoopRef rl, CFRunLoopSourceRef source, CFStringRef modeName);</code></p>
+<ul>
+<li>Timer 接口</li>
+</ul>
+<p><code>CFRunLoopAddTimer(CFRunLoopRef rl, CFRunLoopTimerRef timer, CFStringRef mode) ;</code><br><code>CFRunLoopRemoveTimer(CFRunLoopRef rl, CFRunLoopTimerRef timer, CFStringRef mo de);</code></p>
+<ul>
+<li>Observer 接口</li>
+</ul>
+<p><code>CFRunLoopAddObserver(CFRunLoopRef rl, CFRunLoopObserverRef observer, CFString Ref modeName);</code><br><code>CFRunLoopRemoveObserver(CFRunLoopRef rl, CFRunLoopObserverRef observer, CFStr ingRef modeName);</code></p>
+<h2 id="Runloop-与-AutoreleasePool"><a href="#Runloop-与-AutoreleasePool" class="headerlink" title="Runloop 与 AutoreleasePool"></a>Runloop 与 AutoreleasePool</h2><p>App 启动后会在主线程 Runloop 中注册两个 <code>Observer</code>，回调都是 <code>_wrapRunLoopWithAutoreleasePoolHandler()</code></p>
+<p>在这个回调处理函数中，会区分事件的类型然后调用不同的逻辑处理 <code>AutoreleasePool</code>：</p>
+<ul>
+<li>第一个 Observer 只监听一个 <code>kCFRunLoopEntry</code> 事件；该事件发生时会通过 <code>_objc_autoreleasePoolPush()</code> 创建 AutoreleasePool；它的优先级最高，保证在所有回调执行之前创建 AutoreleasePool</li>
+<li>第二个 Observer 监听了 <code>kCFRunLoopBeforeWaiting</code> 和 <code>kCFRunLoopExit</code> 两个事件；它的优先级最低，保证在所有回调之后执行逻辑<ul>
+<li><code>kCFRunLoopBeforeWaiting</code> 休眠时会调用 <code>_objc_autoreleasePoolPop()</code> 和 <code>_objc_autoreleasePoolPush()</code> 释放旧的 AutoreleasePool 并立刻创建新的 AutoreleasePool</li>
+<li><code>kCFRunLoopExit</code> 会调用 <code>_objc_autoreleasePoolPop()</code> 释放 AutoreleasePool</li>
+</ul>
+</li>
+</ul>
+<blockquote>
+<p>之所以要在即将休眠 <code>kCFRunLoopBeforeWaiting</code> 的回调中销毁并立刻创建一个新的 AutoreleasePool；而不是在休眠唤醒 <code>kCFRunLoopAfterWaiting</code> 的回调中再创建 AutoreleasePool。是因为可能收到的信号是退出信号，这时 Runloop 不会触发休眠唤醒回调；而是直接触发 <code>kCFRunLoopExit</code> 回调</p>
+</blockquote>
+<h2 id="Runloop-与事件响应"><a href="#Runloop-与事件响应" class="headerlink" title="Runloop 与事件响应"></a>Runloop 与事件响应</h2><p>每个 App 进程注册了一个 <code>Source1</code>（主动唤醒 Runloop）的回调来接受系统的事件，回调函数为 <code>__IOHIDEventSystemClientQueueCallback()</code></p>
+<p>当设备硬件的事件（触摸、旋转、锁屏等）发生后，会经历这样几个流程：</p>
+<ol>
+<li>由 <code>IOKit.framework</code> 框架对事件进行处理，并封装成 <code>IOHIDEvent</code> 对象并发送到 <code>SpringBoard</code></li>
+<li><code>SpringBoard</code> 是主屏幕（同时它还处理动画和屏幕绘制）。<code>SpringBoard</code> 只会处理触摸、加速、按键等几种事件；处理后会将事件通过 <code>mach port</code> 发送到对应的 App 进程中</li>
+<li>事件发送到 App 进程中后会触发事件回调，在回调中调用 <code>_UIApplicationHandleEventQueue()</code> 方法</li>
+<li><code>_UIApplicationHandleEventQueue()</code> 方法将事件转为 <code>UIEvent</code> 对象并按不同的类型进行处理或分发</li>
+</ol>
+<blockquote>
+<p>其中触摸、旋转等会发送给 UIWindow；通常的点击事件、<code>touchesBegin/Move/End</code> 触摸回调都是在这个回调中完成的</p>
+</blockquote>
+<h3 id="UIApplicationHandleEventQueue-中的手势识别"><a href="#UIApplicationHandleEventQueue-中的手势识别" class="headerlink" title="_UIApplicationHandleEventQueue 中的手势识别"></a>_UIApplicationHandleEventQueue 中的手势识别</h3><p>当进程内的回调接收到 Event 并判别它是一个手势之后，首先会取消当前的触摸回调 <code>touchesBegin/Move/End</code>，并将对应的手势标记为<em>待处理</em>，等待下一步的触摸动作以识别出具体的手势。</p>
+<p>这个地方也用到了 Runloop 的 Observer，系统注册了一个 <code>BeforeWaiting</code>（即将休眠）的回调，在当次 Runloop 休眠之前通过 <code>_UIGestureRecognizerUpdateObserver()</code> 回调函数获取到所有被标记为<em>待处理</em>的手势，通过一系列手势识别出具体的手势类型并执行对应手势的逻辑</p>
+<p>当手势发生了变化（创建、销毁、状态改变）时，这个回调都会进行相应的处理。例如：有些手势（长按）跨越了不止一个 Runloop，就需要在休眠前改变手势的状态等待下一个 Runloop 处理</p>
+<h2 id="Runloop-与界面更新"><a href="#Runloop-与界面更新" class="headerlink" title="Runloop 与界面更新"></a>Runloop 与界面更新</h2><p>在 UI 更新（<code>Frame</code> 改变、<code>UIView/CALayer</code> 层级改变、手动调用 <code>setNeedsLayout/setNeedsDisplay</code>）时，对应的 <code>UIView/CALayer</code> 会被标记为<em>待处理</em>，然后打包成事务提交到一个全局容器中（SpringBoard）。</p>
+<p>系统注册了一个 Observer 监听 <code>BeforeWaiting</code> (即将进入休眠) 和 <code>Exit</code> (即将退出Loop) 事件，该 Observer 的回调会遍历所有待处理的 <code>UIView/CAlayer</code> 以执行实际的绘制和调整，并更新 UI 界面</p>
+<h2 id="Runloop-与动画"><a href="#Runloop-与动画" class="headerlink" title="Runloop 与动画"></a>Runloop 与动画</h2><p><code>CoreAnimation</code> 同样在 RunLoop 中注册了两个个 <code>Observer</code>，分别监听了 <code>Entry</code>和 <code>BeforeWaiting &amp; Exit</code> 事件（与 AutoreleasePool 类似，会在一个 Runloop 中自动开启一个 Transaction）</p>
+<p><code>CALayer</code> 会捕获可动画的视图变化（例如 改变 <code>frame</code>，修改透明度，以及添加自定义动画等），之后通过 <code>CATransaction</code> 将所有变化打包提交到一个中间状态栈中。</p>
+<p>当 RunLoop 即将进入休眠（或退出）时，<code>Observer</code> 回调会被触发将所有中间状态中的变化提交到 GPU 中进行渲染，之后 <code>CoreAnimation</code> 会通过 <code>DisplayLink</code> 等机制多次触发相关流程展示动画</p>
+<h2 id="Runloop-与定时器"><a href="#Runloop-与定时器" class="headerlink" title="Runloop 与定时器"></a>Runloop 与定时器</h2><p>iOS 中的定时器主要有 <code>NSTimer</code> 和 <code>CADisplayLink</code> 两种</p>
+<ul>
+<li><code>NSTimer</code>： 其实就是 <code>CFRunLoopTimerRef</code>，注册到 Runloop 中后，RunLoop 会为其在指定的时间点注册事件，到点触发回调。但是 RunLoop 为了节省资源，并不会在非常准确的时间点执行这个回调；在资源紧张的时候回调甚至会被跳过不触发</li>
+<li><code>CADisplayLink</code>：内部实质是通过 <code>Source</code> 设置的，是一个和屏幕刷新率一致的定时器；同样会在资源紧张的时候会被 Runloop 丢弃某次回调</li>
+</ul>
+ 
+      <!-- reward -->
+      
+    </div>
+    
+
+    <!-- copyright -->
+    
+    <div class="declare">
+      <ul class="post-copyright">
+        <li>
+          <i class="ri-copyright-line"></i>
+          <strong>Copyright： </strong>
+          
+          Copyright is owned by the author. For commercial reprints, please contact the author for authorization. For non-commercial reprints, please indicate the source.
+          
+        </li>
+      </ul>
+    </div>
+    
+    <footer class="article-footer">
+       
+<div class="share-btn">
+      <span class="share-sns share-outer">
+        <i class="ri-share-forward-line"></i>
+        分享
+      </span>
+      <div class="share-wrap">
+        <i class="arrow"></i>
+        <div class="share-icons">
+          
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="ri-weibo-fill"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="ri-wechat-fill"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="ri-qq-fill"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="ri-douban-line"></i>
+          </a>
+          <!-- <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a> -->
+          
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="ri-facebook-circle-fill"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="ri-twitter-fill"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="ri-google-fill"></i>
+          </a>
+        </div>
+      </div>
+</div>
+
+<div class="wx-share-modal">
+    <a class="modal-close" href="javascript:;"><i class="ri-close-circle-line"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://notes.honqi.ink/2018/01/12/Cocoa/iOS/Runloop/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div id="share-mask"></div>  
+    </footer>
+  </div>
+
+   
+  <nav class="article-nav">
+    
+      <a href="/2018/03/02/Cocoa/iOS/Layout/" class="article-nav-link">
+        <strong class="article-nav-caption">上一篇</strong>
+        <div class="article-nav-title">
+          
+            iOS Layout 简介
+          
+        </div>
+      </a>
+    
+    
+      <a href="/2017/12/02/Cocoa/iOS/App%E5%90%AF%E5%8A%A8%E5%8F%8A%E4%BC%98%E5%8C%96/" class="article-nav-link">
+        <strong class="article-nav-caption">下一篇</strong>
+        <div class="article-nav-title">App 启动及优化</div>
+      </a>
+    
+  </nav>
+
+   
+<!-- valine评论 -->
+<div id="vcomments-box">
+  <div id="vcomments"></div>
+</div>
+<script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/valine@1.4.14/dist/Valine.min.js"></script>
+<script>
+  new Valine({
+    el: "#vcomments",
+    app_id: "",
+    app_key: "",
+    path: window.location.pathname,
+    avatar: "monsterid",
+    placeholder: "给我的文章加点评论吧~",
+    recordIP: true,
+  });
+  const infoEle = document.querySelector("#vcomments .info");
+  if (infoEle && infoEle.childNodes && infoEle.childNodes.length > 0) {
+    infoEle.childNodes.forEach(function (item) {
+      item.parentNode.removeChild(item);
+    });
+  }
+</script>
+<style>
+  #vcomments-box {
+    padding: 5px 30px;
+  }
+
+  @media screen and (max-width: 800px) {
+    #vcomments-box {
+      padding: 5px 0px;
+    }
+  }
+
+  #vcomments-box #vcomments {
+    background-color: #fff;
+  }
+
+  .v .vlist .vcard .vh {
+    padding-right: 20px;
+  }
+
+  .v .vlist .vcard {
+    padding-left: 10px;
+  }
+</style>
+
+ 
+   
+     
+</article>
+
+</section>
+      <footer class="footer">
+  <div class="outer">
+    <ul>
+      <li>
+        Copyrights &copy;
+        2017-2021
+        <i class="ri-heart-fill heart_icon"></i> HonQi
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        
+        Powered by <a href="https://hexo.io" target="_blank">Hexo</a>
+        <span class="division">|</span>
+        Theme - <a href="https://github.com/Shen-Yu/hexo-theme-ayer" target="_blank">Ayer</a>
+        
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+      </li>
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      <li>
+        <!-- cnzz统计 -->
+        
+      </li>
+    </ul>
+  </div>
+</footer>
+      <div class="float_btns">
+        <div class="totop" id="totop">
+  <i class="ri-arrow-up-line"></i>
+</div>
+
+<div class="todark" id="todark">
+  <i class="ri-moon-line"></i>
+</div>
+
+      </div>
+    </main>
+    <aside class="sidebar on">
+      <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+  <div class="logo">
+    <a href="/"><img src="/avatar.png" alt="HonQi&#39;s Letter"></a>
+  </div>
+  
+  <ul class="nav nav-main">
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/">主页</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/archives">归档</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/categories">分类</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags">标签</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/about">关于我</a>
+    </li>
+    
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      
+      <a class="nav-item-link nav-item-search"  title="Search">
+        <i class="ri-search-line"></i>
+      </a>
+      
+      
+      <a class="nav-item-link" target="_blank" href="/atom.xml" title="RSS Feed">
+        <i class="ri-rss-line"></i>
+      </a>
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+    </aside>
+    <div id="mask"></div>
+
+<!-- #reward -->
+<div id="reward">
+  <span class="close"><i class="ri-close-line"></i></span>
+  <p class="reward-p"><i class="ri-cup-line"></i>请我喝杯咖啡吧~</p>
+  <div class="reward-box">
+    
+    
+  </div>
+</div>
+    
+<script src="/js/jquery-2.0.3.min.js"></script>
+ 
+<script src="/js/lazyload.min.js"></script>
+
+<!-- Tocbot -->
+ 
+<script src="/js/tocbot.min.js"></script>
+
+<script>
+  tocbot.init({
+    tocSelector: ".tocbot",
+    contentSelector: ".article-entry",
+    headingSelector: "h1, h2, h3, h4, h5, h6",
+    hasInnerContainers: true,
+    scrollSmooth: true,
+    scrollContainer: "main",
+    positionFixedSelector: ".tocbot",
+    positionFixedClass: "is-position-fixed",
+    fixedSidebarOffset: "auto",
+  });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.js"></script>
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.css"
+/>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js"></script>
+
+<script src="/dist/main.js"></script>
+
+<!-- ImageViewer -->
+ <!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                <!--  Controls are self-explanatory. Order can be changed. -->
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" style="display:none" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.min.css">
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"></script>
+
+<script>
+    function viewer_init() {
+        let pswpElement = document.querySelectorAll('.pswp')[0];
+        let $imgArr = document.querySelectorAll(('.article-entry img:not(.reward-img)'))
+
+        $imgArr.forEach(($em, i) => {
+            $em.onclick = () => {
+                // slider展开状态
+                // todo: 这样不好，后面改成状态
+                if (document.querySelector('.left-col.show')) return
+                let items = []
+                $imgArr.forEach(($em2, i2) => {
+                    let img = $em2.getAttribute('data-idx', i2)
+                    let src = $em2.getAttribute('data-target') || $em2.getAttribute('src')
+                    let title = $em2.getAttribute('alt')
+                    // 获得原图尺寸
+                    const image = new Image()
+                    image.src = src
+                    items.push({
+                        src: src,
+                        w: image.width || $em2.width,
+                        h: image.height || $em2.height,
+                        title: title
+                    })
+                })
+                var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, {
+                    index: parseInt(i)
+                });
+                gallery.init()
+            }
+        })
+    }
+    viewer_init()
+</script> 
+<!-- MathJax -->
+
+<!-- Katex -->
+
+<!-- busuanzi  -->
+
+<!-- ClickLove -->
+
+<!-- ClickBoom1 -->
+
+<!-- ClickBoom2 -->
+
+<!-- CodeCopy -->
+ 
+<link rel="stylesheet" href="/css/clipboard.css">
+ <script src="https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js"></script>
+<script>
+  function wait(callback, seconds) {
+    var timelag = null;
+    timelag = window.setTimeout(callback, seconds);
+  }
+  !function (e, t, a) {
+    var initCopyCode = function(){
+      var copyHtml = '';
+      copyHtml += '<button class="btn-copy" data-clipboard-snippet="">';
+      copyHtml += '<i class="ri-file-copy-2-line"></i><span>COPY</span>';
+      copyHtml += '</button>';
+      $(".highlight .code pre").before(copyHtml);
+      $(".article pre code").before(copyHtml);
+      var clipboard = new ClipboardJS('.btn-copy', {
+        target: function(trigger) {
+          return trigger.nextElementSibling;
+        }
+      });
+      clipboard.on('success', function(e) {
+        let $btn = $(e.trigger);
+        $btn.addClass('copied');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-checkbox-circle-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPIED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-checkbox-circle-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+      clipboard.on('error', function(e) {
+        e.clearSelection();
+        let $btn = $(e.trigger);
+        $btn.addClass('copy-failed');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-time-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPY FAILED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-time-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+    }
+    initCopyCode();
+  }(window, document);
+</script>
+ 
+<!-- CanvasBackground -->
+
+<script>
+  if (window.mermaid) {
+    mermaid.initialize({ theme: "forest" });
+  }
+</script>
+
+
+    
+  </div>
+</body>
+
+</html>

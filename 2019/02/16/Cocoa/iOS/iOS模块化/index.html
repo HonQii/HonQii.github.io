@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+
+
+<html lang="zh-Hans">
+  
+
+    <head>
+      <meta charset="utf-8" />
+       
+      <meta name="keywords" content="iOS 开发,Objective-C,Swift,Cocoa" />
+       
+      <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1"
+      />
+      <title>iOS 模块化 |  HonQi&#39;s Letter</title>
+  <meta name="generator" content="hexo-theme-ayer">
+      
+      <link rel="shortcut icon" href="/favicon.ico" />
+       
+<link rel="stylesheet" href="/dist/main.css">
+
+      <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/css/remixicon.min.css"
+      />
+      
+<link rel="stylesheet" href="/css/custom.css">
+ 
+      <script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+       
+ 
+
+      <!-- mermaid -->
+      
+    <link rel="alternate" href="/atom.xml" title="HonQi's Letter" type="application/atom+xml">
+</head>
+  </html>
+</html>
+
+
+<body>
+  <div id="app">
+    
+      
+    <main class="content on">
+      <section class="outer">
+  <article
+  id="post-Cocoa/iOS/iOS模块化"
+  class="article article-type-post"
+  itemscope
+  itemprop="blogPost"
+  data-scroll-reveal
+>
+  <div class="article-inner">
+    
+    <header class="article-header">
+       
+<h1 class="article-title sea-center" style="border-left:0" itemprop="name">
+  iOS 模块化
+</h1>
+ 
+
+      
+    </header>
+     
+    <div class="article-meta">
+      <a href="/2019/02/16/Cocoa/iOS/iOS%E6%A8%A1%E5%9D%97%E5%8C%96/" class="article-date">
+  <time datetime="2019-02-16T16:00:00.000Z" itemprop="datePublished">2019-02-17</time>
+</a> 
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/cocoa/">Cocoa</a> / <a class="article-category-link" href="/categories/cocoa/ios/">iOS</a> / <a class="article-category-link" href="/categories/cocoa/ios/%E6%A8%A1%E5%9D%97%E5%8C%96/">模块化</a>
+  </div>
+  
+<div class="word_count">
+    <span class="post-time">
+        <span class="post-meta-item-icon">
+            <i class="ri-quill-pen-line"></i>
+            <span class="post-meta-item-text"> Word count:</span>
+            <span class="post-count">2k</span>
+        </span>
+    </span>
+
+    <span class="post-time">
+        &nbsp; | &nbsp;
+        <span class="post-meta-item-icon">
+            <i class="ri-book-open-line"></i>
+            <span class="post-meta-item-text"> Reading time≈</span>
+            <span class="post-count">7 min</span>
+        </span>
+    </span>
+</div>
+ 
+    </div>
+      
+    <div class="tocbot"></div>
+
+
+
+
+  
+    <div class="article-entry" itemprop="articleBody">
+       
+  <p>iOS 模块化方案记录</p>
+<span id="more"></span>
+
+<h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><p>前东家是一家很老的（始于1997年）服务提供商，同时和大多数软件公司一样，很多服务需要额外购买，同时升级软件版本也要掏一大笔钱。这么长时间导致后台服务有多个版本，且每个客户能访问的功能五花八门，数据也是无比的杂乱。这就给客户端带来了很大的挑战，之前的解决方案是写一个包含最大公共功能的 App，再以此为基础为每一个客户定制单独的 App。但这样的 App 通常是一次性的，除非有重大的 bug，否则不会更新。终于公司下定决心重构，重构有几个目标：</p>
+<ol>
+<li>要将所有 App 整合为一个 App，便于维护和升级</li>
+<li>因为是重构，要原有功能的完整和准确性，因此单元测试覆盖率要达到 70% 以上</li>
+<li>因为客户遍及全球，因为 RTL 、弱视、盲人模式都要有</li>
+<li>因为业务需求，需要支持功能复杂的深度链接</li>
+<li>由于后端服务和数据复杂，为了保证客户端（Android、iOS、WindowsPhone）数据一致性，所以用 C++ 做了统一的网络请求中间层</li>
+</ol>
+<p>基于以上要求，能想到的最好解决方案自然就是模块化：</p>
+<ol>
+<li>基于路由 URL 对模块 UI 页面跳转管理</li>
+<li>基于协议对数据的请求、缓存和分享管理</li>
+<li>维护通用 UI 库保证满足 RTL、弱视、盲人模式的支持</li>
+</ol>
+<p>从结构上，整个 App 被划分为 5 层</p>
+<p><img src="./iOS%E6%A8%A1%E5%9D%97%E5%8C%96/app-module-structure.jpg" alt="app structure"></p>
+<h2 id="跨平台公共层"><a href="#跨平台公共层" class="headerlink" title="跨平台公共层"></a>跨平台公共层</h2><p>这一层使用 C++ 包装了多种版本和多种服务端 URL 的 Api，保证了各个客户端 Api 请求的一致性</p>
+<h2 id="公共组件库"><a href="#公共组件库" class="headerlink" title="公共组件库"></a>公共组件库</h2><ul>
+<li>公共数据结构 framework：C++ 层返回的请求结果都可以转换为公共的数据结构，同时也是以公共数据结构定义的结构体进行缓存；各个业务模块的数据结构都是用公共数据结构组合起来的</li>
+<li>数据管理 framework：管理与 C++ 层的请求，将请求数据转换为客户端定义的公共结构、数据缓存等</li>
+<li>通用 UI framework：通用 UI 库维护了 App 的基础库，同时保证基础组件满足 RTL、弱视下的大字体布局、盲人模式下的阅读、各尺寸屏幕适配等</li>
+</ul>
+<p><img src="./iOS%E6%A8%A1%E5%9D%97%E5%8C%96/app-common.jpg" alt="app common"></p>
+<h2 id="模块管理层"><a href="#模块管理层" class="headerlink" title="模块管理层"></a>模块管理层</h2><ul>
+<li>模块接口协议 ComponentProtocol：定义了模块的启动规则、生命周期、参数、数据源等，用于模块的启动</li>
+<li>模块数据协议 DataProviderProtocol: 是一个空协议，各个子模块可以扩展协议方法。然后通过实现了该协议的类获取数据</li>
+<li>路由管理 Router：管理模块之间的 UI 页面跳转、模块之间的参数传递、转场动画等</li>
+</ul>
+<p><img src="./iOS%E6%A8%A1%E5%9D%97%E5%8C%96/app-comonent.jpg" alt="app component"></p>
+<h3 id="模块接口协议-ComponentProtocol"><a href="#模块接口协议-ComponentProtocol" class="headerlink" title="模块接口协议 ComponentProtocol"></a>模块接口协议 ComponentProtocol</h3><p>模块接口协议大致定义如下：</p>
+<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">protocol</span> <span class="title">ComponentProtocol</span>: <span class="title">class</span> </span>&#123;</span><br><span class="line">    <span class="comment">/// Component&#x27;s unqiue identifier</span></span><br><span class="line">    <span class="keyword">var</span> uid: <span class="type">String</span>! &#123; <span class="keyword">get</span> <span class="keyword">set</span> &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">/// Component&#x27;s uri</span></span><br><span class="line">    <span class="keyword">var</span> urlComponent: <span class="type">RouterURLComponent</span>? &#123; <span class="keyword">get</span> <span class="keyword">set</span> &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">/// Router object</span></span><br><span class="line">    <span class="keyword">var</span> router: <span class="type">Router</span>? &#123; <span class="keyword">get</span> <span class="keyword">set</span> &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">/// Component instance&#x27;s navigate mode</span></span><br><span class="line">    <span class="keyword">var</span> navigateMode: <span class="type">RouterNavigateMode</span>! &#123; <span class="keyword">get</span> <span class="keyword">set</span> &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">/// Component&#x27;s main entry UIViewController</span></span><br><span class="line">    <span class="keyword">var</span> viewController: <span class="type">UIViewController</span>! &#123; <span class="keyword">get</span> <span class="keyword">set</span> &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">/// Component&#x27;s data provider</span></span><br><span class="line">    <span class="keyword">var</span> dataProvider: <span class="type">DataProvider</span>! &#123; <span class="keyword">get</span> <span class="keyword">set</span> &#125;</span><br><span class="line">    </span><br><span class="line">    </span><br><span class="line">    <span class="comment">/// componentWIllMount() is invoked immediately before a component is mounted into component hierarchy tree</span></span><br><span class="line">    <span class="comment">/// At that moment, perform any necessarily initialize things, setup component&#x27;s state. Just remember the componentWillMount is only called once during the component lifecycle.</span></span><br><span class="line">    <span class="comment">/// Avoid introducing any UI rendering related things in this methods.</span></span><br><span class="line">    <span class="function"><span class="keyword">func</span> <span class="title">componentWillMount</span>()</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">/// componetWillUmount() is invoked before a component is umounted from the component hierarchy tree.</span></span><br><span class="line">    <span class="comment">/// At that moment, perform any necessary cleanup for the component at this method, such as invalidating timers, cancelling network requests, cleanup used resources.</span></span><br><span class="line">    <span class="comment">/// This method is only called once during the component&#x27;s while lifecycle.</span></span><br><span class="line">    <span class="function"><span class="keyword">func</span> <span class="title">componentWillUnmount</span>()</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">/// componentWillActive() is invoked before a component is presented at top of the component hierarchy tree.</span></span><br><span class="line">    <span class="comment">/// Use this as an opportunity to operate any things when the component is active for user</span></span><br><span class="line">    <span class="function"><span class="keyword">func</span> <span class="title">componentWillActive</span>()</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">/// componentWillInactive is invoked before a component is no more at the top of the component hierarchy tree.</span></span><br><span class="line">    <span class="comment">/// There&#x27;re two cases</span></span><br><span class="line">    <span class="comment">///     1) The component is removed from the hierarchy tree.</span></span><br><span class="line">    <span class="comment">///     2) Another component is pushed into the tree, the component is at the second top of the tree.</span></span><br><span class="line">    <span class="function"><span class="keyword">func</span> <span class="title">componentWillInactive</span>()</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">extension</span> <span class="title">ComponentProtocol</span> </span>&#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="function"><span class="keyword">func</span> <span class="title">componentWillMount</span>()</span> &#123;&#125;</span><br><span class="line">    <span class="keyword">public</span> <span class="function"><span class="keyword">func</span> <span class="title">componentWillUnmount</span>()</span> &#123;&#125;</span><br><span class="line">    <span class="keyword">public</span> <span class="function"><span class="keyword">func</span> <span class="title">componentWillActive</span>()</span> &#123;&#125;</span><br><span class="line">    <span class="keyword">public</span> <span class="function"><span class="keyword">func</span> <span class="title">componentWillInactive</span>()</span> &#123;&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>每个模块 framework 暴露一个公共类实现模块接口，填入必要的参数例如 转场动画的模式、模块入口的 ViewController 等信息，Router 解析后会补齐进入模块的 URI、数据源 DataProvider 等信息，同时调用该类实现的生命周期方法</p>
+<h3 id="模块数据协议-DataProviderProtocol"><a href="#模块数据协议-DataProviderProtocol" class="headerlink" title="模块数据协议 DataProviderProtocol"></a>模块数据协议 DataProviderProtocol</h3><p>模块数据协议 DataProviderProtocol 定义了当前模块获取数据的方法接口，在模块向外暴露的 Component 入口类中，规定 dataProvider 必须实现当前模块的数据协议方法，这样就能保证模块可以通过外部数据源获取数据</p>
+<h3 id="路由管理-Router"><a href="#路由管理-Router" class="headerlink" title="路由管理 Router"></a>路由管理 Router</h3><p>路由管理模块负责维护 URL 与模块之间的对应关系，当访问到对应的模块时：</p>
+<ol>
+<li>初始化该模块的公共 Component 类，填充 Component 中的属性</li>
+<li>调用对应的生命周期函数</li>
+<li>拿到入口 ViewController，打开页面</li>
+<li>调用 Component 的生命周期函数，这样就完成了一次模块间的跳转</li>
+</ol>
+<blockquote>
+<p>Router 与 NavigationController 一一对应，因此在模块内部的 VC 间跳转也要通过 Router，否则在模块之间的跳转会打乱 VC 的栈<br>Router 会优先选择 URL 参数中的转场动画模式，如果没有设置再使用 Componet 类中定义的转场模式，这是为了 Deeplink 打开 App 时可以在用户无感知的情况下一次跳转多个页面</p>
+</blockquote>
+<h2 id="App-与模块的数据"><a href="#App-与模块的数据" class="headerlink" title="App 与模块的数据"></a>App 与模块的数据</h2><p>App 通过 Router 控制模块的生命周期、UI跳转，然后通过 DataProvider 的实例控制与模块之间的数据交互</p>
+<p><img src="./iOS%E6%A8%A1%E5%9D%97%E5%8C%96/app-data-provider.jpg" alt="app dataprovider"></p>
+<p>DataProvider 会在模块解析注册完成时注入到 Component 中，从而保证模块可以通过 Component 中的 dataProvider 拿到对应的数据</p>
+<p>DataProvider 实例遵守 DataProvider 协议，并实现了各个模块扩展协议中的方法，它负责将公共的数据结构汇总为各个模块所需的数据结构，管理各个模块的数据请求回调等</p>
+<blockquote>
+<p>例如，每次打开一个模块会立即返回之前请求缓存的数据，保证 UI 可以立即渲染出来，然后 DataProvider 会保存回调，当最新的数据请求完成时，再通过回调返回新的数据</p>
+</blockquote>
+<h2 id="模块间通信与数据传输"><a href="#模块间通信与数据传输" class="headerlink" title="模块间通信与数据传输"></a>模块间通信与数据传输</h2><ul>
+<li>参数：在 <code>componentWillActive</code> 生命周期函数调用之后，模块中可以拿到进入模块对应的 URL，从而可以从 URL 中解析出传入的参数，此时可以根据参数初始化入口 ViewController</li>
+<li>数据：在 <code>componentWillMount</code> 生命周期函数调用之后，模块中可以拿到 dataProvider 对象，开启请求数据</li>
+<li>复杂数据传输：通常模块化设计的一大问题就是复杂数据如何传输，我们使用的是缓存机制，需要传输的数据通过协议接口传递给 dateProvider 对象临时持有，下一个模块再通过指定的 key 去取出</li>
+</ul>
+<h2 id="模块的测试"><a href="#模块的测试" class="headerlink" title="模块的测试"></a>模块的测试</h2><p>一个模块的完整测试包括功能数据的测试与 UI 测试：</p>
+<ul>
+<li>由于模块采用 MVVM 的设计模式，通过 Mock 数据很容易对 VM 进行数据和功能的单元测试</li>
+<li>而 UI 的测试也很简单，只要对当前 framework 创建一个单模块的 App，然后创建一个数据类实现模块的数据请求协议<code>MockDataProvider&lt;ComponentDataProviderProtocol&gt;</code>，在该类中 Mock 各种 UI 测试的边界数据。再在 App 中通过模块的公共 Component 类进入模块即可完整的模拟出打开模块的流程</li>
+</ul>
+<p><img src="./iOS%E6%A8%A1%E5%9D%97%E5%8C%96/app-test.jpg" alt="app text"></p>
+<p>最终每个模块的项目结构如下：</p>
+<p><img src="./iOS%E6%A8%A1%E5%9D%97%E5%8C%96/app-module.png" alt="app module"></p>
+ 
+      <!-- reward -->
+      
+    </div>
+    
+
+    <!-- copyright -->
+    
+    <div class="declare">
+      <ul class="post-copyright">
+        <li>
+          <i class="ri-copyright-line"></i>
+          <strong>Copyright： </strong>
+          
+          Copyright is owned by the author. For commercial reprints, please contact the author for authorization. For non-commercial reprints, please indicate the source.
+          
+        </li>
+      </ul>
+    </div>
+    
+    <footer class="article-footer">
+       
+<div class="share-btn">
+      <span class="share-sns share-outer">
+        <i class="ri-share-forward-line"></i>
+        分享
+      </span>
+      <div class="share-wrap">
+        <i class="arrow"></i>
+        <div class="share-icons">
+          
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="ri-weibo-fill"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="ri-wechat-fill"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="ri-qq-fill"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="ri-douban-line"></i>
+          </a>
+          <!-- <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a> -->
+          
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="ri-facebook-circle-fill"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="ri-twitter-fill"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="ri-google-fill"></i>
+          </a>
+        </div>
+      </div>
+</div>
+
+<div class="wx-share-modal">
+    <a class="modal-close" href="javascript:;"><i class="ri-close-circle-line"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://notes.honqi.ink/2019/02/16/Cocoa/iOS/iOS%E6%A8%A1%E5%9D%97%E5%8C%96/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div id="share-mask"></div>  
+    </footer>
+  </div>
+
+   
+  <nav class="article-nav">
+    
+      <a href="/2019/04/21/Cocoa/ObjC/OC%E4%B8%AD%E7%9A%84Protocol%E9%BB%98%E8%AE%A4%E5%AE%9E%E7%8E%B0/" class="article-nav-link">
+        <strong class="article-nav-caption">上一篇</strong>
+        <div class="article-nav-title">
+          
+            OC 中 Protocol 默认实现
+          
+        </div>
+      </a>
+    
+    
+      <a href="/2018/11/07/Cocoa/iOS/LayoutEngine/" class="article-nav-link">
+        <strong class="article-nav-caption">下一篇</strong>
+        <div class="article-nav-title">iOS Layout Engine 与 Render Loop</div>
+      </a>
+    
+  </nav>
+
+   
+<!-- valine评论 -->
+<div id="vcomments-box">
+  <div id="vcomments"></div>
+</div>
+<script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/valine@1.4.14/dist/Valine.min.js"></script>
+<script>
+  new Valine({
+    el: "#vcomments",
+    app_id: "",
+    app_key: "",
+    path: window.location.pathname,
+    avatar: "monsterid",
+    placeholder: "给我的文章加点评论吧~",
+    recordIP: true,
+  });
+  const infoEle = document.querySelector("#vcomments .info");
+  if (infoEle && infoEle.childNodes && infoEle.childNodes.length > 0) {
+    infoEle.childNodes.forEach(function (item) {
+      item.parentNode.removeChild(item);
+    });
+  }
+</script>
+<style>
+  #vcomments-box {
+    padding: 5px 30px;
+  }
+
+  @media screen and (max-width: 800px) {
+    #vcomments-box {
+      padding: 5px 0px;
+    }
+  }
+
+  #vcomments-box #vcomments {
+    background-color: #fff;
+  }
+
+  .v .vlist .vcard .vh {
+    padding-right: 20px;
+  }
+
+  .v .vlist .vcard {
+    padding-left: 10px;
+  }
+</style>
+
+ 
+   
+     
+</article>
+
+</section>
+      <footer class="footer">
+  <div class="outer">
+    <ul>
+      <li>
+        Copyrights &copy;
+        2017-2021
+        <i class="ri-heart-fill heart_icon"></i> HonQi
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        
+        Powered by <a href="https://hexo.io" target="_blank">Hexo</a>
+        <span class="division">|</span>
+        Theme - <a href="https://github.com/Shen-Yu/hexo-theme-ayer" target="_blank">Ayer</a>
+        
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+      </li>
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      <li>
+        <!-- cnzz统计 -->
+        
+      </li>
+    </ul>
+  </div>
+</footer>
+      <div class="float_btns">
+        <div class="totop" id="totop">
+  <i class="ri-arrow-up-line"></i>
+</div>
+
+<div class="todark" id="todark">
+  <i class="ri-moon-line"></i>
+</div>
+
+      </div>
+    </main>
+    <aside class="sidebar on">
+      <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+  <div class="logo">
+    <a href="/"><img src="/avatar.png" alt="HonQi&#39;s Letter"></a>
+  </div>
+  
+  <ul class="nav nav-main">
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/">主页</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/archives">归档</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/categories">分类</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags">标签</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/about">关于我</a>
+    </li>
+    
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      
+      <a class="nav-item-link nav-item-search"  title="Search">
+        <i class="ri-search-line"></i>
+      </a>
+      
+      
+      <a class="nav-item-link" target="_blank" href="/atom.xml" title="RSS Feed">
+        <i class="ri-rss-line"></i>
+      </a>
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+    </aside>
+    <div id="mask"></div>
+
+<!-- #reward -->
+<div id="reward">
+  <span class="close"><i class="ri-close-line"></i></span>
+  <p class="reward-p"><i class="ri-cup-line"></i>请我喝杯咖啡吧~</p>
+  <div class="reward-box">
+    
+    
+  </div>
+</div>
+    
+<script src="/js/jquery-2.0.3.min.js"></script>
+ 
+<script src="/js/lazyload.min.js"></script>
+
+<!-- Tocbot -->
+ 
+<script src="/js/tocbot.min.js"></script>
+
+<script>
+  tocbot.init({
+    tocSelector: ".tocbot",
+    contentSelector: ".article-entry",
+    headingSelector: "h1, h2, h3, h4, h5, h6",
+    hasInnerContainers: true,
+    scrollSmooth: true,
+    scrollContainer: "main",
+    positionFixedSelector: ".tocbot",
+    positionFixedClass: "is-position-fixed",
+    fixedSidebarOffset: "auto",
+  });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.js"></script>
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.css"
+/>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js"></script>
+
+<script src="/dist/main.js"></script>
+
+<!-- ImageViewer -->
+ <!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                <!--  Controls are self-explanatory. Order can be changed. -->
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" style="display:none" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.min.css">
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"></script>
+
+<script>
+    function viewer_init() {
+        let pswpElement = document.querySelectorAll('.pswp')[0];
+        let $imgArr = document.querySelectorAll(('.article-entry img:not(.reward-img)'))
+
+        $imgArr.forEach(($em, i) => {
+            $em.onclick = () => {
+                // slider展开状态
+                // todo: 这样不好，后面改成状态
+                if (document.querySelector('.left-col.show')) return
+                let items = []
+                $imgArr.forEach(($em2, i2) => {
+                    let img = $em2.getAttribute('data-idx', i2)
+                    let src = $em2.getAttribute('data-target') || $em2.getAttribute('src')
+                    let title = $em2.getAttribute('alt')
+                    // 获得原图尺寸
+                    const image = new Image()
+                    image.src = src
+                    items.push({
+                        src: src,
+                        w: image.width || $em2.width,
+                        h: image.height || $em2.height,
+                        title: title
+                    })
+                })
+                var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, {
+                    index: parseInt(i)
+                });
+                gallery.init()
+            }
+        })
+    }
+    viewer_init()
+</script> 
+<!-- MathJax -->
+
+<!-- Katex -->
+
+<!-- busuanzi  -->
+
+<!-- ClickLove -->
+
+<!-- ClickBoom1 -->
+
+<!-- ClickBoom2 -->
+
+<!-- CodeCopy -->
+ 
+<link rel="stylesheet" href="/css/clipboard.css">
+ <script src="https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js"></script>
+<script>
+  function wait(callback, seconds) {
+    var timelag = null;
+    timelag = window.setTimeout(callback, seconds);
+  }
+  !function (e, t, a) {
+    var initCopyCode = function(){
+      var copyHtml = '';
+      copyHtml += '<button class="btn-copy" data-clipboard-snippet="">';
+      copyHtml += '<i class="ri-file-copy-2-line"></i><span>COPY</span>';
+      copyHtml += '</button>';
+      $(".highlight .code pre").before(copyHtml);
+      $(".article pre code").before(copyHtml);
+      var clipboard = new ClipboardJS('.btn-copy', {
+        target: function(trigger) {
+          return trigger.nextElementSibling;
+        }
+      });
+      clipboard.on('success', function(e) {
+        let $btn = $(e.trigger);
+        $btn.addClass('copied');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-checkbox-circle-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPIED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-checkbox-circle-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+      clipboard.on('error', function(e) {
+        e.clearSelection();
+        let $btn = $(e.trigger);
+        $btn.addClass('copy-failed');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-time-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPY FAILED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-time-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+    }
+    initCopyCode();
+  }(window, document);
+</script>
+ 
+<!-- CanvasBackground -->
+
+<script>
+  if (window.mermaid) {
+    mermaid.initialize({ theme: "forest" });
+  }
+</script>
+
+
+    
+  </div>
+</body>
+
+</html>
